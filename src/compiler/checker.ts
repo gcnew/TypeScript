@@ -206,6 +206,9 @@ namespace ts {
         let assignableRelation: Map<RelationComparisonResult> = {};
         let identityRelation: Map<RelationComparisonResult> = {};
 
+        // This is for caching the result of getSymbolDisplayBuilder. Do not access directly.
+        let _displayBuilder: SymbolDisplayBuilder;
+
         type TypeSystemEntity = Symbol | Type | Signature;
 
         const enum TypeSystemPropertyName {
@@ -1473,8 +1476,6 @@ namespace ts {
             return undefined;
         }
 
-        // This is for caching the result of getSymbolDisplayBuilder. Do not access directly.
-        let _displayBuilder: SymbolDisplayBuilder;
         function getSymbolDisplayBuilder(): SymbolDisplayBuilder {
 
             function getNameOfSymbol(symbol: Symbol): string {
@@ -3431,7 +3432,7 @@ namespace ts {
         // type, a property is considered known if it is known in any constituent type.
         function isKnownProperty(type: Type, name: string): boolean {
             if (type.flags & TypeFlags.ObjectType && type !== globalObjectType) {
-                var resolved = resolveStructuredTypeMembers(type);
+                const resolved = resolveStructuredTypeMembers(type);
                 return !!(resolved.properties.length === 0 ||
                     resolved.stringIndexType ||
                     resolved.numberIndexType ||
