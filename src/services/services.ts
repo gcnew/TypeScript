@@ -785,6 +785,7 @@ namespace ts {
         public amdDependencies: { name: string; path: string }[];
         public moduleName: string;
         public referencedFiles: FileReference[];
+        public emit: boolean;
 
         public syntacticDiagnostics: Diagnostic[];
         public referenceDiagnostics: Diagnostic[];

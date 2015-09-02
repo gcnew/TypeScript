@@ -207,6 +207,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, Promi
             return;
 
             function emitSourceFile(sourceFile: SourceFile): void {
+                if (!sourceFile.emit) return;
                 currentSourceFile = sourceFile;
                 exportFunctionForFile = undefined;
                 emit(sourceFile);

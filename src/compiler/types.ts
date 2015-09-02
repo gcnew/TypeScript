@@ -1125,6 +1125,7 @@ namespace ts {
 
     export interface FileReference extends TextRange {
         fileName: string;
+        noEmit?: boolean;
     }
 
     export interface CommentRange extends TextRange {
@@ -1258,6 +1259,16 @@ namespace ts {
          * because this containing file is intended to act as a default library.
          */
         hasNoDefaultLib: boolean;
+
+        /**
+         * Gets set to true in all cases except when referenced by a comment like
+         * 
+         * /// <reference no-emit path="foo.ts"/>
+         * 
+         * The referenced file is included in typechecking, but will not be
+         * included in the emit unless it is referenced in another way
+         */
+        emit: boolean;
 
         languageVersion: ScriptTarget;
 

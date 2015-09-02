@@ -434,7 +434,7 @@ namespace ts {
         }
     }
 
-    export let fullTripleSlashReferencePathRegEx = /^(\/\/\/\s*<reference\s+path\s*=\s*)('|")(.+?)\2.*?\/>/;
+    export let fullTripleSlashReferencePathRegEx = /^(\/\/\/\s*<reference\s+(?:no-emit\s+)?path\s*=\s*)('|")(.+?)\2.*?\/>/;
 
     export function isTypeNode(node: Node): boolean {
         if (SyntaxKind.FirstTypeNode <= node.kind && node.kind <= SyntaxKind.LastTypeNode) {
@@ -1337,6 +1337,7 @@ namespace ts {
 
     export function getFileReferenceFromReferencePath(comment: string, commentRange: CommentRange): ReferencePathMatchResult {
         let simpleReferenceRegEx = /^\/\/\/\s*<reference\s+/gim;
+        let noEmitReferenceRegEx = /^\/\/\/\s*<reference\s+no-emit\s+/gim;
         let isNoDefaultLibRegEx = /^(\/\/\/\s*<reference\s+no-default-lib\s*=\s*)('|")(.+?)\2\s*\/>/gim;
         if (simpleReferenceRegEx.exec(comment)) {
             if (isNoDefaultLibRegEx.exec(comment)) {
@@ -1346,6 +1347,7 @@ namespace ts {
             }
             else {
                 let matchResult = fullTripleSlashReferencePathRegEx.exec(comment);
+                let noEmitFlag = !!noEmitReferenceRegEx.exec(comment);
                 if (matchResult) {
                     let start = commentRange.pos;
                     let end = commentRange.end;
@@ -1353,7 +1355,8 @@ namespace ts {
                         fileReference: {
                             pos: start,
                             end: end,
-                            fileName: matchResult[3]
+                            fileName: matchResult[3],
+                            noEmit: noEmitFlag
                         },
                         isNoDefaultLib: false
                     };
