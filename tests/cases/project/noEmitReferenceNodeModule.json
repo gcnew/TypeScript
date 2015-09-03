@@ -1,0 +1,10 @@
+{
+    "scenario": "no-emit_reference_nodeModule",
+    "projectRoot": "tests/cases/projects/no-emit_referenceNodeModule",
+    "inputFiles": [
+        "test1.ts"
+    ],
+    "declaration": true,
+    "baselineCheck": true,
+    "moduleResolution": "node"
+}

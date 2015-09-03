@@ -1,0 +1,9 @@
+{
+    "scenario": "no-emit_reference",
+    "projectRoot": "tests/cases/projects/no-emit_reference",
+    "inputFiles": [
+        "test1.ts"
+    ],
+    "declaration": true,
+    "baselineCheck": true
+}

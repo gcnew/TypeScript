@@ -192,6 +192,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, Promi
 
             if (root) {
                 // Do not call emit directly. It does not set the currentSourceFile.
+                if (!root.emit) return; //If we're emitting individual files/modules, and this file isn't set to emit, don't even write the empty file to disk 
                 emitSourceFile(root);
             }
             else {

@@ -64,6 +64,7 @@ namespace ts {
         let referencePathsOutput = "";
 
         if (root) {
+            if (!root.emit) return; // Ignore files which aren't flagged for emit
             // Emitting just a single file, so emit references in this file only
             if (!compilerOptions.noResolve) {
                 let addedGlobalFileReference = false;
@@ -73,7 +74,8 @@ namespace ts {
                     // All the references that are not going to be part of same file
                     if (referencedFile && ((referencedFile.flags & NodeFlags.DeclarationFile) || // This is a declare file reference
                         shouldEmitToOwnFile(referencedFile, compilerOptions) || // This is referenced file is emitting its own js file
-                        !addedGlobalFileReference)) { // Or the global out file corresponding to this reference was not added
+                        !addedGlobalFileReference || // Or the global out file corresponding to this reference was not added
+                        !referencedFile.emit)) { // Or the referenced file isn't emitted
 
                         writeReferencePath(referencedFile);
                         if (!isExternalModuleOrDeclarationFile(referencedFile)) {
@@ -111,7 +113,7 @@ namespace ts {
                             let referencedFile = tryResolveScriptReference(host, sourceFile, fileReference);
 
                             // If the reference file is a declaration file or an external module, emit that reference
-                            if (referencedFile && (isExternalModuleOrDeclarationFile(referencedFile) &&
+                            if (referencedFile && ((isExternalModuleOrDeclarationFile(referencedFile) || !referencedFile.emit) &&
                                 !contains(emittedReferencedFiles, referencedFile))) { // If the file reference was not already emitted
 
                                 writeReferencePath(referencedFile);
@@ -450,6 +452,7 @@ namespace ts {
         }
 
         function emitSourceFile(node: SourceFile) {
+            if (!node.emit) return; // Don't emit files which haven't been flagged for emit
             currentSourceFile = node;
             enclosingDeclaration = node;
             emitLines(node.statements);
@@ -1573,7 +1576,7 @@ namespace ts {
         }
 
         function writeReferencePath(referencedFile: SourceFile) {
-            let declFileName = referencedFile.flags & NodeFlags.DeclarationFile
+            let declFileName = (referencedFile.flags & NodeFlags.DeclarationFile || !referencedFile.emit) // Treat non-emitted files like dts
                 ? referencedFile.fileName // Declaration file, use declaration file name
                 : shouldEmitToOwnFile(referencedFile, compilerOptions)
                     ? getOwnEmitOutputFilePath(referencedFile, host, ".d.ts") // Own output file so get the .d.ts file
@@ -1585,14 +1588,14 @@ namespace ts {
                 host.getCurrentDirectory(),
                 host.getCanonicalFileName,
             /*isAbsolutePathAnUrl*/ false);
-
-            referencePathsOutput += "/// <reference path=\"" + declFileName + "\" />" + newLine;
+            referencePathsOutput += `/// <reference ${!referencedFile.emit ? "no-emit " : ""}path="${declFileName}" />` + newLine;
         }
     }
 
     /* @internal */
     export function writeDeclarationFile(jsFilePath: string, sourceFile: SourceFile, host: EmitHost, resolver: EmitResolver, diagnostics: Diagnostic[]) {
         let emitDeclarationResult = emitDeclarations(host, resolver, diagnostics, jsFilePath, sourceFile);
+        if (!emitDeclarationResult) return;
         // TODO(shkamat): Should we not write any declaration file if any of them can produce error,
         // or should we just not write this file like we are doing now
         if (!emitDeclarationResult.reportedDeclarationError) {

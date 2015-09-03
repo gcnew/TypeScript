@@ -19,6 +19,7 @@ interface ProjectRunnerTestCase {
     bug?: string; // If there is any bug associated with this test case
     noResolve?: boolean;
     rootDir?: string; // --rootDir
+    moduleResolution?: string; // --moduleResolution
 }
 
 interface ProjectRunnerTestCaseResolutionInfo extends ProjectRunnerTestCase {
@@ -163,13 +164,14 @@ class ProjectRunner extends RunnerBase {
                     mapRoot: testCase.resolveMapRoot && testCase.mapRoot ? Harness.IO.resolvePath(testCase.mapRoot) : testCase.mapRoot,
                     sourceRoot: testCase.resolveSourceRoot && testCase.sourceRoot ? Harness.IO.resolvePath(testCase.sourceRoot) : testCase.sourceRoot,
                     module: moduleKind,
-                    moduleResolution: ts.ModuleResolutionKind.Classic, // currently all tests use classic module resolution kind, this will change in the future 
+                    moduleResolution: (testCase.moduleResolution && testCase.moduleResolution === "node") ? ts.ModuleResolutionKind.NodeJs : ts.ModuleResolutionKind.Classic,
                     noResolve: testCase.noResolve,
                     rootDir: testCase.rootDir
                 };
             }
 
             function getSourceFile(fileName: string, languageVersion: ts.ScriptTarget): ts.SourceFile {
+                fileName = Harness.IO.resolvePath(fileName);
                 let sourceFile: ts.SourceFile = undefined;
                 if (fileName === Harness.Compiler.defaultLibFileName) {
                     sourceFile = languageVersion === ts.ScriptTarget.ES6 ? Harness.Compiler.defaultES6LibSourceFile : Harness.Compiler.defaultLibSourceFile;
@@ -194,7 +196,7 @@ class ProjectRunner extends RunnerBase {
                     useCaseSensitiveFileNames: () => Harness.IO.useCaseSensitiveFileNames(),
                     getNewLine: () => Harness.IO.newLine(),
                     fileExists: fileName => getSourceFile(fileName, ts.ScriptTarget.ES5) !== undefined,
-                    readFile: fileName => Harness.IO.readFile(fileName)
+                    readFile: fileName => getSourceFile(fileName, ts.ScriptTarget.ES5).text
                 };
             }
         }
@@ -297,12 +299,15 @@ class ProjectRunner extends RunnerBase {
                     }
 
                     let outputDtsFileName = emitOutputFilePathWithoutExtension + ".d.ts";
-                    allInputFiles.unshift(findOutpuDtsFile(outputDtsFileName));
+                    let outputDtsFile = findOutpuDtsFile(outputDtsFileName);
+                    if (outputDtsFile) {
+                        allInputFiles.unshift(outputDtsFile);
+                    }
                 }
                 else {
                     let outputDtsFileName = ts.removeFileExtension(compilerOptions.outFile|| compilerOptions.out) + ".d.ts";
                     let outputDtsFile = findOutpuDtsFile(outputDtsFileName);
-                    if (!ts.contains(allInputFiles, outputDtsFile)) {
+                    if (outputDtsFile && !ts.contains(allInputFiles, outputDtsFile)) {
                         allInputFiles.unshift(outputDtsFile);
                     }
                 }

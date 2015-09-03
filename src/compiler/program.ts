@@ -58,7 +58,6 @@ namespace ts {
             if (resolvedFileName) {
                 return { resolvedFileName, failedLookupLocations };
             }
-            
             resolvedFileName = loadNodeModuleFromDirectory(candidate, /* loadOnlyDts */ false, failedLookupLocations, host);
             return { resolvedFileName, failedLookupLocations };
         }
@@ -90,7 +89,6 @@ namespace ts {
     function loadNodeModuleFromDirectory(candidate: string, loadOnlyDts: boolean, failedLookupLocation: string[], host: ModuleResolutionHost): string {
         let packageJsonPath = combinePaths(candidate, "package.json");
         if (host.fileExists(packageJsonPath)) {
-            
             let jsonContent: { typings?: string };
             
             try {
@@ -478,11 +476,6 @@ namespace ts {
                         // tripleslash references has changed
                         return false;
                     }
-
-                    // check emit flag
-                    /*if (oldSourceFile.emit !== newSourceFile.emit) {
-                        return false;
-                    }*/
 
                     // check imports
                     collectExternalModuleReferences(newSourceFile);
