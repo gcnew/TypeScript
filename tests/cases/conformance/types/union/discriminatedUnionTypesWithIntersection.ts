@@ -110,7 +110,7 @@ function arbitraryNesting_if(value: Boxed2): void {
     }
 
     if (value.kind === 'int') {
-        value; // { kind: 'int', num: number } & { x: string; }
+        value; // { kind: 'int', num: number } & { x: string; } & { strVal: string } & { kind: 'int' }
         value.x;
         value.num;
         value.strVal;
