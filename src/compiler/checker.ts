@@ -7813,10 +7813,18 @@ namespace ts {
             }
             if (type.flags & TypeFlags.Union) {
                 return getUnionType(
-                    map((<UnionType>type).types, t => filterType(t, f))
+                    map((<UnionType>type).types, t => filterType(t, f)),
+                    /* noSubtypeReduction */ true
                 );
             }
             return  f(type) ? type : neverType;
+        }
+
+        function filterType0(type: Type, f: (t: Type) => boolean): Type {
+            console.log('In: ' + typeToString(type));
+            const retval = filterType0(type, f);
+            console.log('Out: ' + typeToString(retval));
+            return retval;
         }
 
         function getFlowTypeOfReference(reference: Node, declaredType: Type, assumeInitialized: boolean, includeOuterFunctions: boolean) {
@@ -8102,11 +8110,127 @@ namespace ts {
                 return getTypeWithFacts(type, facts);
             }
 
-            function narrowTypeByDiscriminant(type: Type, propAccess: PropertyAccessExpression, operator: SyntaxKind, value: Expression, assumeTrue: boolean): Type {
-                // We have '==', '!=', '===', or '!==' operator with property access as target
-                if (!isMatchingReference(reference, propAccess.expression)) {
+            function getAccessChain(propAccess: PropertyAccessExpression): PropertyAccessExpression[] {
+                let curr = propAccess;
+                const accessChain: PropertyAccessExpression[] = [];
+                while (true) {
+                    accessChain.push(curr);
+                    if (curr.expression.kind !== SyntaxKind.PropertyAccessExpression) {
+                        break;
+                    }
+                    curr = (<PropertyAccessExpression> curr.expression);
+                }
+                return accessChain;
+            }
+
+            function narrowNestedType(type: Type, idx: number, accessChain: PropertyAccessExpression[], operator: SyntaxKind, value: Expression, assumeTrue: boolean): Type {
+                if (idx === 0) {
+                    return narrowTypeByDiscriminantWorker(type, accessChain[0], operator, value, assumeTrue);
+                }
+
+                if (type.flags & TypeFlags.Union) {
+                    let anyChanged = false;
+                    const filteredSubtypes: Type[] = [];
+                    for (const t of (<IntersectionType> type).types) {
+                        const filtered = narrowNestedType(t, idx, accessChain, operator, value, assumeTrue);
+                        if (filtered === neverType) {
+                            //continue;
+                            return neverType;
+                        }
+                        if (filtered !== t) {
+                            anyChanged = true;
+                        }
+                        filteredSubtypes.push(filtered);
+                    }
+                    if (!anyChanged) {
+                        return type;
+                    }
+                    return getUnionType(filteredSubtypes);
+                }
+
+                if (type.flags & TypeFlags.Intersection) {
+                    let anyChanged = false;
+                    const filteredSubtypes: Type[] = [];
+                    for (const t of (<IntersectionType> type).types) {
+                        const filtered = narrowNestedType(t, idx, accessChain, operator, value, assumeTrue);
+                        if (filtered === neverType) {
+                            return neverType;
+                        }
+                        if (filtered !== t) {
+                            anyChanged = true;
+                        }
+                        filteredSubtypes.push(filtered);
+                    }
+                    if (!anyChanged) {
+                        return type;
+                    }
+                    return getIntersectionType(filteredSubtypes);
+                }
+
+                const propAccess = accessChain[idx];
+                const propName = propAccess.name.text;
+                const propType = getTypeOfPropertyOfType(type, propName);
+                if (!propType) {
                     return type;
                 }
+
+                const narrowedType = narrowNestedType(propType, idx - 1, accessChain, operator, value, assumeTrue);
+                if (narrowedType === propType) {
+                    return type;
+                }
+
+                const resolvedType = <ResolvedType> type;
+                const filteredProps = map(resolvedType.properties, prop => {
+                    if (prop.name !== propName) {
+                        return prop;
+                    }
+
+                    const result = <TransientSymbol>createSymbol(
+                        SymbolFlags.Instantiated |
+                        SymbolFlags.Transient |
+                        SymbolFlags.Property |
+                        prop.flags,
+                        prop.name
+                    );
+
+                    result.declarations = prop.declarations;
+                    result.parent = prop.parent;
+                    result.target = prop;
+                    // result.mapper = prop.mapper;
+                    if (prop.valueDeclaration) {
+                        result.valueDeclaration = prop.valueDeclaration;
+                    }
+
+                    result.type = narrowedType;
+                    return result;
+                });
+
+                return createAnonymousType(
+                    propAccess.symbol,
+                    createSymbolTable(filteredProps),
+                    resolvedType.callSignatures,
+                    resolvedType.constructSignatures,
+                    resolvedType.stringIndexInfo,
+                    resolvedType.numberIndexInfo
+                );
+            }
+
+
+            function narrowTypeByDiscriminant(type: Type, propAccess: PropertyAccessExpression, operator: SyntaxKind, value: Expression, assumeTrue: boolean): Type {
+                // We have '==', '!=', '===', or '!==' operator with property access as target
+                if (isMatchingReference(reference, propAccess.expression)) {
+                    return narrowTypeByDiscriminantWorker(type, propAccess, operator, value, assumeTrue);
+                }
+
+                if (isOrContainsMatchingReference(propAccess.expression, reference)) {
+                    const accessChain = getAccessChain(propAccess);
+                    return narrowNestedType(type, accessChain.length - 1, accessChain, operator, value, assumeTrue);
+                }
+
+                return type;
+            }
+
+            function narrowTypeByDiscriminantWorker(type: Type, propAccess: PropertyAccessExpression, operator: SyntaxKind, value: Expression, assumeTrue: boolean): Type {
                 const propName = propAccess.name.text;
                 const propType = getTypeOfPropertyOfType(type, propName);
                 if (!propType || !(isStringLiteralUnionType(propType) || (type.flags & TypeFlags.UnionOrIntersection))) {
