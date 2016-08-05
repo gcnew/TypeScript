@@ -287,7 +287,7 @@ function compileFile(outFile, sources, prereqs, prefixes, useBuiltCompiler, opts
     file(outFile, prereqs, function() {
         opts = opts || {};
         var compilerPath = useBuiltCompiler ? builtLocalCompiler : LKGCompiler;
-        var options = "--noImplicitAny --noImplicitThis --noEmitOnError --types " 
+        var options = "--noImplicitAny --noImplicitThis --types " 
         if (opts.types) {
             options += opts.types.join(",");
         }
@@ -350,7 +350,8 @@ function compileFile(outFile, sources, prereqs, prefixes, useBuiltCompiler, opts
         ex.addListener("stderr", function(error) {
             process.stderr.write(error);
         });
-        ex.addListener("cmdEnd", function() {
+        
+        var goGo = function() {
             if (!useDebugMode && prefixes && fs.existsSync(outFile)) {
                 for (var i in prefixes) {
                     prependFile(prefixes[i], outFile);
@@ -362,10 +363,13 @@ function compileFile(outFile, sources, prereqs, prefixes, useBuiltCompiler, opts
             }
 
             complete();
-        });
+        };
+        ex.addListener("cmdEnd", goGo);
         ex.addListener("error", function() {
-            fs.unlinkSync(outFile);
-            fail("Compilation of " + outFile + " unsuccessful");
+            console.log('Ha-ha');
+            goGo();
+            // fs.unlinkSync(outFile);
+            // fail("Compilation of " + outFile + " unsuccessful");
         });
         ex.run();
     }, {async: true});

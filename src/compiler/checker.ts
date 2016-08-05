@@ -7,6 +7,8 @@ namespace ts {
     let nextMergeId = 1;
     let nextFlowId = 1;
 
+    const NoProp = { kind: 'no_prop' };
+
     export function getNodeId(node: Node): number {
         if (!node.id) {
             node.id = nextNodeId;
@@ -7813,18 +7815,10 @@ namespace ts {
             }
             if (type.flags & TypeFlags.Union) {
                 return getUnionType(
-                    map((<UnionType>type).types, t => filterType(t, f)),
-                    /* noSubtypeReduction */ true
+                    map((<UnionType>type).types, t => filterType(t, f))
                 );
             }
-            return  f(type) ? type : neverType;
-        }
-
-        function filterType0(type: Type, f: (t: Type) => boolean): Type {
-            console.log('In: ' + typeToString(type));
-            const retval = filterType0(type, f);
-            console.log('Out: ' + typeToString(retval));
-            return retval;
+            return f(type) ? type : neverType;
         }
 
         function getFlowTypeOfReference(reference: Node, declaredType: Type, assumeInitialized: boolean, includeOuterFunctions: boolean) {
@@ -8123,7 +8117,11 @@ namespace ts {
                 return accessChain;
             }
 
-            function narrowNestedType(type: Type, idx: number, accessChain: PropertyAccessExpression[], operator: SyntaxKind, value: Expression, assumeTrue: boolean): Type {
+            function isNoProp(x: any): x is typeof NoProp {
+                return !!x && x.kind === 'no_prop';
+            }
+
+            function narrowNestedType(type: Type, idx: number, accessChain: PropertyAccessExpression[], operator: SyntaxKind, value: Expression, assumeTrue: boolean): Type | typeof NoProp {
                 if (idx === 0) {
                     return narrowTypeByDiscriminantWorker(type, accessChain[0], operator, value, assumeTrue);
                 }
@@ -8134,13 +8132,15 @@ namespace ts {
                     for (const t of (<IntersectionType> type).types) {
                         const filtered = narrowNestedType(t, idx, accessChain, operator, value, assumeTrue);
                         if (filtered === neverType) {
-                            //continue;
-                            return neverType;
+                            continue;
+                        }
+                        if (isNoProp(filtered)) {
+                            return NoProp;
                         }
                         if (filtered !== t) {
                             anyChanged = true;
                         }
-                        filteredSubtypes.push(filtered);
+                        filteredSubtypes.push(<Type>filtered); // TYH
                     }
                     if (!anyChanged) {
                         return type;
@@ -8150,16 +8150,26 @@ namespace ts {
 
                 if (type.flags & TypeFlags.Intersection) {
                     let anyChanged = false;
+                    let anyHasProp = false;
                     const filteredSubtypes: Type[] = [];
                     for (const t of (<IntersectionType> type).types) {
                         const filtered = narrowNestedType(t, idx, accessChain, operator, value, assumeTrue);
                         if (filtered === neverType) {
                             return neverType;
                         }
+                        if (isNoProp(filtered)) {
+                            // use the type as-is (it's an intersection)
+                            filteredSubtypes.push(t);
+                            continue;
+                        }
                         if (filtered !== t) {
                             anyChanged = true;
                         }
-                        filteredSubtypes.push(filtered);
+                        anyHasProp = true;
+                        filteredSubtypes.push(<Type>filtered); // TYH
+                    }
+                    if (!anyHasProp) {
+                        return NoProp;
                     }
                     if (!anyChanged) {
                         return type;
@@ -8171,12 +8181,18 @@ namespace ts {
                 const propName = propAccess.name.text;
                 const propType = getTypeOfPropertyOfType(type, propName);
                 if (!propType) {
-                    return type;
+                    return NoProp;
                 }
 
                 const narrowedType = narrowNestedType(propType, idx - 1, accessChain, operator, value, assumeTrue);
                 if (narrowedType === propType) {
                     return type;
+                }
+                if (narrowedType === neverType) {
+                    return neverType;
+                }
+                if (isNoProp(narrowedType)) {
+                    return NoProp;
                 }
 
                 const resolvedType = <ResolvedType> type;
@@ -8201,7 +8217,7 @@ namespace ts {
                         result.valueDeclaration = prop.valueDeclaration;
                     }
 
-                    result.type = narrowedType;
+                    result.type = <Type>narrowedType; // TYH
                     return result;
                 });
 
@@ -8224,7 +8240,11 @@ namespace ts {
 
                 if (isOrContainsMatchingReference(propAccess.expression, reference)) {
                     const accessChain = getAccessChain(propAccess);
-                    return narrowNestedType(type, accessChain.length - 1, accessChain, operator, value, assumeTrue);
+                    const narrowed = narrowNestedType(type, accessChain.length - 1, accessChain, operator, value, assumeTrue);
+                    if (isNoProp(narrowed)) {
+                        return neverType;
+                    }
+                    return <Type>narrowed; // TYH
                 }
 
                 return type;
