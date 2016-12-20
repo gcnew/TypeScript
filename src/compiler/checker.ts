@@ -28,6 +28,7 @@ namespace ts {
     }
 
     declare let gTypeToString: (type: Type) => string;
+    declare let gSignatureToString: (signature: Signature) => string;
 
     export function createTypeChecker(host: TypeCheckerHost, produceDiagnostics: boolean): TypeChecker {
         // Cancellation that controls whether or not we can cancel in the middle of type checking.
@@ -48,6 +49,7 @@ namespace ts {
         const Signature = objectAllocator.getSignatureConstructor();
 
         gTypeToString = typeToString;
+        gSignatureToString = signatureToString;
 
         let typeCount = 0;
         let symbolCount = 0;
@@ -9005,7 +9007,55 @@ namespace ts {
             return inferredType;
         }
 
+        function substituteType(needle: Type, subst: Type, env: Type[][]) {
+            return reduceLeft(
+                env,
+
+                (acc, types) => {
+                    acc.push(map(types, t => t === needle ? subst : t));
+                    return acc;
+                },
+
+                [] as Type[][]
+            );
+        }
+
+        function unifyTypeParams(original: Type[][]) {
+            let current = original;
+
+            for (let i = 0; i < current.length; ++i) {
+                while (current[i].length >= 2) {
+                    const candidates = current[i];
+
+                    // try to unify
+                    if (candidates[0].flags & TypeFlags.TypeParameter) {
+                        current = substituteType(candidates[0], candidates[1], current);
+                        current[i].shift();
+                        continue;
+                    }
+                    
+                    if (candidates[1].flags & TypeFlags.TypeParameter) {
+                        current = substituteType(candidates[1], candidates[0], current);
+                        current[i].shift();
+                        continue;
+                    }
+
+                    return original;
+                }
+            }
+
+            return current;
+        }
+
         function getInferredTypes(context: InferenceContext): Type[] {
+            const inferences = map(context.inferences, inf => inf.primary || inf.secondary || <Type[]>emptyArray);
+            const unified = unifyTypeParams(inferences);
+
+            if (unified !== inferences) {
+                forEach(unified, (inf, idx) => {
+                    context.inferences[idx].primary = inf
+                });
+            }
             for (let i = 0; i < context.inferredTypes.length; i++) {
                 getInferredType(context, i);
             }
