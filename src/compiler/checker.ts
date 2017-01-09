@@ -8677,6 +8677,10 @@ namespace ts {
             }
 
             function inferFromTypes(source: Type, target: Type) {
+                if ((<InfExt> typeInferences).log) {
+                    (<InfExt> typeInferences).log.push([source, target]);
+                }
+
                 if (!couldContainTypeVariables(target)) {
                     return;
                 }
@@ -8870,6 +8874,89 @@ namespace ts {
                 }
             }
 
+            type InfExt = { log: [Type, Type][] } & TypeInferences[];
+
+            type TypeError = { kind: 'unification_fail', left: Type,          right: Type }
+                           | { kind: 'infinite_type',    type: Type,          subst: Type }
+
+            type Solution = TypeError
+                          | { kind: 'success', solution: Map<Type>, types: Map<Type> }
+
+            function occursCheck(x: Type, y: Type) {
+                // TODO..
+                return false && x && y;
+            }
+
+            function bind(env: Map<Type>, types: Map<Type>, t: Type, subst: Type): TypeError | undefined {
+                if (occursCheck(t, subst)) {
+                    return { kind: 'infinite_type', type: t, subst: subst };
+                }
+
+                Debug.assert(t !== subst);
+                env[t.id] = subst;
+                if (!types[t.id]) {
+                    types[t.id] = t;
+                }
+            }
+
+            function solve(log: [Type, Type][]): Solution {
+                const env = createMap<Type>();
+                const types = createMap<Type>();
+
+                for (let [x, y] of log) {
+                    if (x === y) {
+                        continue;
+                    }
+
+                    x = env[x.id] || x;
+                    y = env[y.id] || y;
+                    if (x === y) {
+                        continue;
+                    }
+
+                    if (x.flags & TypeFlags.TypeParameter) {
+                        const err = bind(env, types, x, y);
+                        if (err) {
+                            return err;
+                        }
+
+                        continue;
+                    }
+
+                    if (y.flags & TypeFlags.TypeParameter) {
+                        const err = bind(env, types, y, x);
+                        if (err) {
+                            return err;
+                        }
+
+                        continue;
+                    }
+
+                    return { kind: 'unification_fail', left: x, right: y };
+                }
+
+                return { kind: 'success', solution: env, types: types };
+            }
+
+            function solutionToString(s: Solution): string {
+                if (s.kind === 'unification_fail') {
+                    return `Cannot unify '${typeToString(s.left)}' with '${typeToString(s.right)}'`;
+                }
+
+                if (s.kind === 'infinite_type') {
+                    return `Infinite type: Cannot unify '${typeToString(s.type)}' with '${typeToString(s.subst)}'`;
+                }
+
+                return Object.keys(s.solution)
+                        .map(k => {
+                            const t = typeToString(s.types[k])
+                            const subst = typeToString(s.solution[k]);
+
+                            return t + ' ~ ' + subst;
+                        })
+                        .join('\n');
+            }
+
             function inferFromSignatures(source: Type, target: Type, kind: SignatureKind) {
                 const sourceSignatures = getSignaturesOfType(source, kind);
                 const targetSignatures = getSignaturesOfType(target, kind);
@@ -8879,12 +8966,46 @@ namespace ts {
                 for (let i = 0; i < len; i++) {
                     const sourceSignature = sourceSignatures[sourceLen - len + i];
                     const targetSignature = targetSignatures[targetLen - len + i];
+                    const poly = isPolymorphicSignature(sourceSignature) && isPolymorphicSignature(targetSignature);
 
-                    const mapper = isPolymorphicSignature(sourceSignature) && isPolymorphicSignature(targetSignature)
-                        ? identity
-                        : getErasedSignature;
+                    let reset = poly && !(<InfExt> typeInferences).log;
+                    if (reset) {
+                        (<InfExt> typeInferences).log = [];
+                    }
 
+                    const mapper = poly ? identity : getErasedSignature;
                     inferFromSignature(mapper(sourceSignature), mapper(targetSignature));
+
+                    if (reset) {
+                        const solution = solve((<InfExt> typeInferences).log);
+
+                        if (!true) {
+                            const us = (<InfExt> typeInferences).log
+                                .map(([x, y]) => typeToString(x) + ' ~ ' + typeToString(y))
+                                .join('\n');
+                            
+                            console.log(' -----------');
+                            console.log(us);
+
+                            console.log('   Solution:');
+                            console.log(solutionToString(solution));
+                        }
+
+                        if (solution.kind === 'success') {
+                            forEach(
+                                typeVariables,
+
+                                (v, i) => {
+                                    const t = solution.solution[v.id];
+                                    if (t) {
+                                        typeInferences[i].primary = [ t ];
+                                    }
+                                }
+                            );
+                        }
+
+                        delete (<InfExt> typeInferences).log;
+                    }
                 }
             }
 
