@@ -1,0 +1,62 @@
+tests/cases/compiler/underscoreMapFirst.ts(45,22): error TS2345: Argument of type 'ISeries[][]' is not assignable to parameter of type 'List<List<T>>'.
+  Index signatures are incompatible.
+    Type 'ISeries[]' is not assignable to type 'List<T>'.
+      Index signatures are incompatible.
+        Type 'ISeries' is not assignable to type 'T'.
+
+
+==== tests/cases/compiler/underscoreMapFirst.ts (1 errors) ====
+    declare module _ {
+        interface Collection<T> { }
+        interface List<T> extends Collection<T> {
+            [index: number]: T;
+            length: number;
+        }
+    
+        interface ListIterator<T, TResult> {
+            (value: T, index: number, list: T[]): TResult;
+        }
+    
+        interface Dictionary<T> extends Collection<T> {
+            [index: string]: T;
+        }
+        export function pluck<T extends {}>(
+            list: Collection<T>,
+            propertyName: string): any[];
+    
+        export function map<T, TResult>(
+            list: List<T>,
+            iterator: ListIterator<T, TResult>,
+            context?: any): TResult[];
+    
+        export function first<T>(array: List<T>): T;
+    }
+    
+    declare class View {
+        model: any;
+    }
+    
+    interface IData {
+        series: ISeries[];
+    }
+    
+    interface ISeries {
+        items: any[];
+        key: string;
+    }
+    
+    class MyView extends View {
+        public getDataSeries(): ISeries[] {
+            var data: IData[] = this.model.get("data");
+            var allSeries: ISeries[][] = _.pluck(data, "series");
+    
+            return _.map(allSeries, _.first);
+                         ~~~~~~~~~
+!!! error TS2345: Argument of type 'ISeries[][]' is not assignable to parameter of type 'List<List<T>>'.
+!!! error TS2345:   Index signatures are incompatible.
+!!! error TS2345:     Type 'ISeries[]' is not assignable to type 'List<T>'.
+!!! error TS2345:       Index signatures are incompatible.
+!!! error TS2345:         Type 'ISeries' is not assignable to type 'T'.
+        }
+    }
+    

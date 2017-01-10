@@ -1,0 +1,10 @@
+tests/cases/compiler/inferentialTypingWithFunctionType.ts(4,13): error TS2345: Argument of type '""' is not assignable to parameter of type 'U'.
+
+
+==== tests/cases/compiler/inferentialTypingWithFunctionType.ts (1 errors) ====
+    declare function map<T, U>(x: T, f: (s: T) => U): U;
+    declare function identity<V>(y: V): V;
+    
+    var s = map("", identity);
+                ~~
+!!! error TS2345: Argument of type '""' is not assignable to parameter of type 'U'.

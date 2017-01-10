@@ -1,7 +1,8 @@
-tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithOverloadedFunctionTypedArguments2.ts(28,20): error TS2345: Argument of type '<T>(x: T, y: T) => string' is not assignable to parameter of type '{ (x: any): string; (x: any, y?: any): string; }'.
+tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithOverloadedFunctionTypedArguments2.ts(28,20): error TS2345: Argument of type '<T>(x: T, y: T) => string' is not assignable to parameter of type '{ (x: T): string; (x: T, y?: T): string; }'.
+tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithOverloadedFunctionTypedArguments2.ts(34,20): error TS2345: Argument of type '1' is not assignable to parameter of type 'string'.
 
 
-==== tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithOverloadedFunctionTypedArguments2.ts (1 errors) ====
+==== tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithOverloadedFunctionTypedArguments2.ts (2 errors) ====
     // Function typed arguments with multiple signatures must be passed an implementation that matches all of them
     // Inferences are made quadratic-pairwise to and from these overload sets
     
@@ -31,13 +32,15 @@ tests/cases/conformance/types/typeRelationships/typeInference/genericCallWithOve
     
         var r10 = foo6(<T>(x: T, y: T) => ''); // error
                        ~~~~~~~~~~~~~~~~~~~~~
-!!! error TS2345: Argument of type '<T>(x: T, y: T) => string' is not assignable to parameter of type '{ (x: any): string; (x: any, y?: any): string; }'.
+!!! error TS2345: Argument of type '<T>(x: T, y: T) => string' is not assignable to parameter of type '{ (x: T): string; (x: T, y?: T): string; }'.
     
         function foo7<T>(x:T, cb: { (x: T): string; (x: T, y?: T): string }) {
             return cb;
         }
     
         var r13 = foo7(1, <T>(x: T) => x); // ok
+                       ~
+!!! error TS2345: Argument of type '1' is not assignable to parameter of type 'string'.
         var a: { <T>(x: T): number; <T>(x: number): T; }
         var r14 = foo7(1, a); // ok
     }
