@@ -8568,11 +8568,13 @@ namespace ts {
 
         function createInferenceContext(signature: Signature, inferUnionTypes: boolean): InferenceContext {
             const inferences = map(signature.typeParameters, createTypeInferencesObject);
+            (<InfExt> inferences).log = [];
+
             return {
                 signature,
                 inferUnionTypes,
                 inferences,
-                inferredTypes: new Array(signature.typeParameters.length),
+                inferredTypes: new Array(signature.typeParameters.length)
             };
         }
 
@@ -8676,9 +8678,18 @@ namespace ts {
                 return false;
             }
 
+            function isAtomType(type: Type) {
+                return (type.flags & (TypeFlags.Primitive | TypeFlags.TypeParameter | TypeFlags.Union | TypeFlags.Intersection))
+                    || ((type.flags & TypeFlags.Object) && ((<ObjectType> type).objectFlags & (ObjectFlags.Tuple
+                        // | ObjectFlags.EvolvingArray | ObjectFlags.Reference
+                        )));
+            }
+
             function inferFromTypes(source: Type, target: Type) {
                 if ((<InfExt> typeInferences).log) {
-                    (<InfExt> typeInferences).log.push([source, target]);
+                    if (isAtomType(source) || isAtomType(target)) {
+                        (<InfExt> typeInferences).log.push([target, source]);
+                    }
                 }
 
                 if (!couldContainTypeVariables(target)) {
@@ -8874,99 +8885,6 @@ namespace ts {
                 }
             }
 
-            type InfExt = { log: [Type, Type][] } & TypeInferences[];
-
-            type TypeError = { kind: 'unification_fail', left: Type,          right: Type }
-                           | { kind: 'infinite_type',    type: Type,          subst: Type }
-
-            type Solution = TypeError
-                          | { kind: 'success', solution: Map<Type>, types: Map<Type> }
-
-            function occursCheck(x: Type, y: Type) {
-                // TODO..
-                return false && x && y;
-            }
-
-            function bind(env: Map<Type>, types: Map<Type>, t: Type, subst: Type): TypeError | undefined {
-                if (occursCheck(t, subst)) {
-                    return { kind: 'infinite_type', type: t, subst: subst };
-                }
-
-                Debug.assert(t !== subst);
-                for (const key of Object.keys(env)) {
-                    if (env[key] === t) {
-                        env[key] = subst;
-                    }
-                }
-                env[t.id] = subst;
-                env[subst.id] = subst;
-
-                if (!types[t.id]) {
-                    types[t.id] = t;
-                }
-                if (!types[subst.id]) {
-                    types[subst.id] = subst;
-                }
-            }
-
-            function solve(log: [Type, Type][]): Solution {
-                const env = createMap<Type>();
-                const types = createMap<Type>();
-
-                for (let [x, y] of log) {
-                    if (x === y) {
-                        continue;
-                    }
-
-                    x = env[x.id] || x;
-                    y = env[y.id] || y;
-                    if (x === y) {
-                        continue;
-                    }
-
-                    if (x.flags & TypeFlags.TypeParameter) {
-                        const err = bind(env, types, x, y);
-                        if (err) {
-                            return err;
-                        }
-
-                        continue;
-                    }
-
-                    if (y.flags & TypeFlags.TypeParameter) {
-                        const err = bind(env, types, y, x);
-                        if (err) {
-                            return err;
-                        }
-
-                        continue;
-                    }
-
-                    return { kind: 'unification_fail', left: x, right: y };
-                }
-
-                return { kind: 'success', solution: env, types: types };
-            }
-
-            function solutionToString(s: Solution): string {
-                if (s.kind === 'unification_fail') {
-                    return `Cannot unify '${typeToString(s.left)}' with '${typeToString(s.right)}'`;
-                }
-
-                if (s.kind === 'infinite_type') {
-                    return `Infinite type: Cannot unify '${typeToString(s.type)}' with '${typeToString(s.subst)}'`;
-                }
-
-                return Object.keys(s.solution)
-                        .map(k => {
-                            const t = typeToString(s.types[k])
-                            const subst = typeToString(s.solution[k]);
-
-                            return t + ' ~ ' + subst;
-                        })
-                        .join('\n');
-            }
-
             function inferFromSignatures(source: Type, target: Type, kind: SignatureKind) {
                 const sourceSignatures = getSignaturesOfType(source, kind);
                 const targetSignatures = getSignaturesOfType(target, kind);
@@ -8978,44 +8896,8 @@ namespace ts {
                     const targetSignature = targetSignatures[targetLen - len + i];
                     const poly = isPolymorphicSignature(sourceSignature) && isPolymorphicSignature(targetSignature);
 
-                    let reset = poly && !(<InfExt> typeInferences).log;
-                    if (reset) {
-                        (<InfExt> typeInferences).log = [];
-                    }
-
                     const mapper = poly ? identity : getErasedSignature;
                     inferFromSignature(mapper(sourceSignature), mapper(targetSignature));
-
-                    if (reset) {
-                        const solution = solve((<InfExt> typeInferences).log);
-
-                        if (!true) {
-                            const us = (<InfExt> typeInferences).log
-                                .map(([x, y]) => typeToString(x) + ' ~ ' + typeToString(y))
-                                .join('\n');
-
-                            console.log(' -----------');
-                            console.log(us);
-
-                            console.log('   Solution:');
-                            console.log(solutionToString(solution));
-                        }
-
-                        if (solution.kind === 'success') {
-                            forEach(
-                                typeVariables,
-
-                                (v, i) => {
-                                    const t = solution.solution[v.id];
-                                    if (t) {
-                                        typeInferences[i].primary = [ t ];
-                                    }
-                                }
-                            );
-                        }
-
-                        delete (<InfExt> typeInferences).log;
-                    }
                 }
             }
 
@@ -9138,55 +9020,152 @@ namespace ts {
             return inferredType;
         }
 
-        function substituteType(needle: Type, subst: Type, env: Type[][]) {
-            return reduceLeft(
-                env,
+        type InfExt = { log: [Type, Type][] } & TypeInferences[];
 
-                (acc, types) => {
-                    acc.push(map(types, t => t === needle ? subst : t));
-                    return acc;
-                },
+        type TypeError = { kind: 'unification_fail', left: Type,          right: Type }
+                       | { kind: 'infinite_type',    type: Type,          subst: Type }
 
-                [] as Type[][]
-            );
+        type Solution = TypeError
+                      | { kind: 'success', solution: Map<Type>, types: Map<Type> }
+
+        function occursCheck(x: Type, y: Type) {
+            // TODO..
+            return x === y;
         }
 
-        function unifyTypeParams(original: Type[][]) {
-            let current = original;
-
-            for (let i = 0; i < current.length; ++i) {
-                while (current[i].length >= 2) {
-                    const candidates = current[i];
-
-                    // try to unify
-                    if (candidates[0].flags & TypeFlags.TypeParameter) {
-                        current = substituteType(candidates[0], candidates[1], current);
-                        current[i].shift();
-                        continue;
-                    }
-
-                    if (candidates[1].flags & TypeFlags.TypeParameter) {
-                        current = substituteType(candidates[1], candidates[0], current);
-                        current[i].shift();
-                        continue;
-                    }
-
-                    return original;
-                }
+        function bind(env: Map<Type>, types: Map<Type>, t: Type, subst: Type): TypeError | undefined {
+            if (occursCheck(t, subst)) {
+                return { kind: 'infinite_type', type: t, subst: subst };
             }
 
-            return current;
+            const mapper = createUnaryTypeMapper(t, subst);
+            for (const key of Object.keys(env)) {
+                env[key] = instantiateType(env[key], mapper);
+            }
+
+            env[t.id] = subst;
+            env[subst.id] = subst;
+
+            if (!types[t.id]) {
+                types[t.id] = t;
+            }
+            if (!types[subst.id]) {
+                types[subst.id] = subst;
+            }
+        }
+
+        function getType(t: Type, env: Map<Type>) {
+            return env[t.id]
+                || ((t.flags & TypeFlags.Object) && instantiateType(t, s => env[s.id] || s))
+                || t;
+        }
+
+        function solve(log: [Type, Type][]): Solution {
+            const env = createMap<Type>();
+            const types = createMap<Type>();
+
+            for (const [x0, y0] of log) {
+                if (x0 === y0) {
+                    continue;
+                }
+
+                const x = getType(x0, env);
+                const y = getType(y0, env);
+                if (x === y) {
+                    continue;
+                }
+
+                if (x.flags & TypeFlags.TypeParameter) {
+                    const err = bind(env, types, x, y);
+                    if (err) {
+                        return err;
+                    }
+
+                    continue;
+                }
+
+                if (y.flags & TypeFlags.TypeParameter) {
+                    const err = bind(env, types, y, x);
+                    if (err) {
+                        return err;
+                    }
+
+                    continue;
+                }
+
+                // TODO: widened ~ literal unification shpuld be the other way around
+                // but `() => 'hello'` is inferred as `() => string` not `() => "hello"`
+
+                // widened ~ literal
+                if (isTypeAssignableTo(y, x)) {
+                    continue;
+                }
+
+                // literal ~ widdened
+                if (isTypeAssignableTo(x, y)) {
+                    if (x0.flags & TypeFlags.TypeParameter) {
+                        return solve([<[Type, Type]>[x0, y]].concat(log));
+                    }
+                }
+
+                return { kind: 'unification_fail', left: x, right: y };
+            }
+
+            return { kind: 'success', solution: env, types: types };
+        }
+
+        function solutionToString(s: Solution): string {
+            if (s.kind === 'unification_fail') {
+                return `Cannot unify '${typeToString(s.left)}' with '${typeToString(s.right)}'`;
+            }
+
+            if (s.kind === 'infinite_type') {
+                return `Infinite type: Cannot unify '${typeToString(s.type)}' with '${typeToString(s.subst)}'`;
+            }
+
+            return Object.keys(s.solution)
+                    .map(k => {
+                        const t = typeToString(s.types[k])
+                        const subst = typeToString(s.solution[k]);
+
+                        return t + ' ~ ' + subst;
+                    })
+                    .join('\n');
         }
 
         function getInferredTypes(context: InferenceContext): Type[] {
-            const inferences = map(context.inferences, inf => inf.primary || inf.secondary || <Type[]>emptyArray);
-            const unified = unifyTypeParams(inferences);
+            if ((<InfExt> context.inferences).log) {
+                const inferences = context.inferences;
+                const typeVariables = context.signature.typeParameters;
 
-            if (unified !== inferences) {
-                forEach(unified, (inf, idx) => {
-                    context.inferences[idx].primary = inf
-                });
+                const solution = solve((<InfExt> inferences).log);
+
+                if (!true) {
+                    const us = (<InfExt> inferences).log
+                        .map(([x, y]) => typeToString(x) + ' ~ ' + typeToString(y))
+                        .join('\n');
+
+                    console.log(' -----------');
+                    console.log(us);
+
+                    console.log('   Solution:');
+                    console.log(solutionToString(solution));
+                }
+
+                if (solution.kind === 'success') {
+                    forEach(
+                        typeVariables,
+
+                        (v, i) => {
+                            const t = solution.solution[v.id];
+                            if (t) {
+                                inferences[i].primary = [ t ];
+                            }
+                        }
+                    );
+                }
             }
+
             for (let i = 0; i < context.inferredTypes.length; i++) {
                 getInferredType(context, i);
             }
@@ -12904,6 +12883,7 @@ namespace ts {
             const inferenceMapper = getInferenceMapper(context);
 
             // Clear out all the inference results from the last time inferTypeArguments was called on this context
+            (<InfExt> context.inferences).log = [];
             for (let i = 0; i < typeParameters.length; i++) {
                 // As an optimization, we don't have to clear (and later recompute) inferred types
                 // for type parameters that have already been fixed on the previous call to inferTypeArguments.
