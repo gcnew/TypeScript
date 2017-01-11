@@ -1,5 +1,5 @@
 //// [genericCallWithGenericSignatureArguments.ts]
-// When a function expression is inferentially typed (section 4.9.3) and a type assigned to a parameter in that expression references type parameters for which inferences are being made, 
+// When a function expression is inferentially typed (section 4.9.3) and a type assigned to a parameter in that expression references type parameters for which inferences are being made,
 // the corresponding inferred type arguments to become fixed and no further candidate inferences are made for them.
 
 function foo<T>(a: (x: T) => T, b: (x: T) => T) {
@@ -7,7 +7,7 @@ function foo<T>(a: (x: T) => T, b: (x: T) => T) {
     return r;
 }
 
-//var r1 = foo((x: number) => 1, (x: string) => ''); // error
+var r1 = foo((x: number) => 1, (x: string) => ''); // error
 var r1b = foo((x) => 1, (x) => ''); // {} => {}
 var r2 = foo((x: Object) => null, (x: string) => ''); // Object => Object
 var r3 = foo((x: number) => 1, (x: Object) => null); // number => number
@@ -29,7 +29,7 @@ function other2<T extends Date>(x: T) {
     var r7b = foo((a) => a, (b) => b); // {} => {}
     var r8 = r7(null);
     // BUG 835518
-    //var r9 = r7(new Date());
+    var r9 = r7(new Date());
 }
 
 
@@ -43,7 +43,7 @@ function other3<T extends RegExp>(x: T) {
 }
 
 //// [genericCallWithGenericSignatureArguments.js]
-// When a function expression is inferentially typed (section 4.9.3) and a type assigned to a parameter in that expression references type parameters for which inferences are being made, 
+// When a function expression is inferentially typed (section 4.9.3) and a type assigned to a parameter in that expression references type parameters for which inferences are being made,
 // the corresponding inferred type arguments to become fixed and no further candidate inferences are made for them.
 function foo(a, b) {
     var r;
@@ -67,7 +67,7 @@ function other2(x) {
     var r7b = foo(function (a) { return a; }, function (b) { return b; }); // {} => {}
     var r8 = r7(null);
     // BUG 835518
-    //var r9 = r7(new Date());
+    var r9 = r7(new Date());
 }
 function foo2(a, b) {
     var r;

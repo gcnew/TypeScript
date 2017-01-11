@@ -1,8 +1,6 @@
-tests/cases/compiler/underscoreMapFirst.ts(45,22): error TS2345: Argument of type 'ISeries[][]' is not assignable to parameter of type 'List<List<T>>'.
-  Index signatures are incompatible.
-    Type 'ISeries[]' is not assignable to type 'List<T>'.
-      Index signatures are incompatible.
-        Type 'ISeries' is not assignable to type 'T'.
+tests/cases/compiler/underscoreMapFirst.ts(45,16): error TS2453: The type argument for type parameter 'T' cannot be inferred from the usage. Consider specifying the type arguments explicitly.
+  Type argument candidate 'ISeries[]' is not a valid type argument because it is not a supertype of candidate 'List<T>'.
+    Property 'push' is missing in type 'List<T>'.
 
 
 ==== tests/cases/compiler/underscoreMapFirst.ts (1 errors) ====
@@ -51,12 +49,10 @@ tests/cases/compiler/underscoreMapFirst.ts(45,22): error TS2345: Argument of typ
             var allSeries: ISeries[][] = _.pluck(data, "series");
     
             return _.map(allSeries, _.first);
-                         ~~~~~~~~~
-!!! error TS2345: Argument of type 'ISeries[][]' is not assignable to parameter of type 'List<List<T>>'.
-!!! error TS2345:   Index signatures are incompatible.
-!!! error TS2345:     Type 'ISeries[]' is not assignable to type 'List<T>'.
-!!! error TS2345:       Index signatures are incompatible.
-!!! error TS2345:         Type 'ISeries' is not assignable to type 'T'.
+                   ~~~~~
+!!! error TS2453: The type argument for type parameter 'T' cannot be inferred from the usage. Consider specifying the type arguments explicitly.
+!!! error TS2453:   Type argument candidate 'ISeries[]' is not a valid type argument because it is not a supertype of candidate 'List<T>'.
+!!! error TS2453:     Property 'push' is missing in type 'List<T>'.
         }
     }
     

@@ -151,8 +151,8 @@ module GenericParameter {
     }
 
     var r12 = foo7(1, (x) => x); // any => string (+1 overload) [inferences are made for T, but lambda not contextually typed]
->r12 : { (x: any): string; (x: any, y?: any): string; }
->foo7(1, (x) => x) : { (x: any): string; (x: any, y?: any): string; }
+>r12 : { (x: 1): string; (x: 1, y?: 1): string; }
+>foo7(1, (x) => x) : { (x: 1): string; (x: 1, y?: 1): string; }
 >foo7 : <T>(x: T, cb: { (x: T): string; (x: T, y?: T): string; }) => { (x: T): string; (x: T, y?: T): string; }
 >1 : 1
 >(x) => x : (x: any) => any

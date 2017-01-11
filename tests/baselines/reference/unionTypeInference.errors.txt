@@ -1,7 +1,8 @@
 tests/cases/conformance/types/typeRelationships/typeInference/unionTypeInference.ts(9,15): error TS2345: Argument of type '2' is not assignable to parameter of type 'string | 1'.
+tests/cases/conformance/types/typeRelationships/typeInference/unionTypeInference.ts(15,5): error TS2403: Subsequent variable declarations must have the same type.  Variable 'a4' must be of type 'any', but here has type 'string'.
 
 
-==== tests/cases/conformance/types/typeRelationships/typeInference/unionTypeInference.ts (1 errors) ====
+==== tests/cases/conformance/types/typeRelationships/typeInference/unionTypeInference.ts (2 errors) ====
     // Verify that inferences made *to* a type parameter in a union type are secondary
     // to inferences made directly to that type parameter
     
@@ -19,6 +20,8 @@ tests/cases/conformance/types/typeRelationships/typeInference/unionTypeInference
     var a3 = f(1, a1 || "hello");
     var a4: any;
     var a4 = f(undefined, "abc");
+        ~~
+!!! error TS2403: Subsequent variable declarations must have the same type.  Variable 'a4' must be of type 'any', but here has type 'string'.
     
     function g<T>(value: [string, T]): T {
         return value[1];
