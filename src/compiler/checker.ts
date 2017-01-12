@@ -9054,9 +9054,16 @@ namespace ts {
             }
         }
 
-        function getType(t: Type, env: Map<Type>) {
+        function getEnvMapper(env: Map<Type>, types: Map<Type>) {
+            const mapper: TypeMapper = s => env[s.id] || s;
+            mapper.mappedTypes = map(Object.keys(env), k => types[k]);
+
+            return mapper;
+        }
+
+        function getType(t: Type, env: Map<Type>, types: Map<Type>) {
             return env[t.id]
-                || ((t.flags & TypeFlags.Object) && instantiateType(t, s => env[s.id] || s))
+                || ((t.flags & TypeFlags.Object) && instantiateType(t, getEnvMapper(env, types)))
                 || t;
         }
 
@@ -9069,8 +9076,8 @@ namespace ts {
                     continue;
                 }
 
-                const x = getType(x0, env);
-                const y = getType(y0, env);
+                const x = getType(x0, env, types);
+                const y = getType(y0, env, types);
                 if (x === y) {
                     continue;
                 }
