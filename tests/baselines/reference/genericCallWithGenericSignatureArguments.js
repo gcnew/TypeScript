@@ -42,6 +42,7 @@ function other3<T extends RegExp>(x: T) {
     var r8 = foo2((a: Date) => a, (b: Date) => b); // Date => Date
 }
 
+
 //// [genericCallWithGenericSignatureArguments.js]
 // When a function expression is inferentially typed (section 4.9.3) and a type assigned to a parameter in that expression references type parameters for which inferences are being made,
 // the corresponding inferred type arguments to become fixed and no further candidate inferences are made for them.
@@ -49,7 +50,7 @@ function foo(a, b) {
     var r;
     return r;
 }
-//var r1 = foo((x: number) => 1, (x: string) => ''); // error
+var r1 = foo(function (x) { return 1; }, function (x) { return ''; }); // error
 var r1b = foo(function (x) { return 1; }, function (x) { return ''; }); // {} => {}
 var r2 = foo(function (x) { return null; }, function (x) { return ''; }); // Object => Object
 var r3 = foo(function (x) { return 1; }, function (x) { return null; }); // number => number
