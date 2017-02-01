@@ -9008,13 +9008,32 @@ namespace ts {
         }
 
 
-        type InfState = { log: [Type, Type][], polyVars: Map<boolean> }
+        type InfState   = SolveState & {
+            visited: Map<boolean>,
+            sourceStack: Type[],
+            targetStack: Type[],
+            depth: number
+        }
+
+        type SolveState = { log: [Type, Type][], polyVars: Map<boolean> }
 
         type TypeError = { kind: 'unification_fail', left: Type,          right: Type }
                        | { kind: 'infinite_type',    type: Type,          subst: Type }
 
         type Solution = TypeError
                       | { kind: 'success', solution: Map<Type>, types: Map<Type> }
+
+        function mkInfState(tyParams?: TypeParameter[]): InfState {
+            return {
+                log: [],
+                polyVars: markPolyVars(tyParams, createMap<boolean>()),
+
+                depth: 0,
+                sourceStack: [],
+                targetStack: [],
+                visited: createMap<boolean>()
+            };
+        }
 
         function markPolyVars(types: Type[] | undefined, map: Map<boolean>) {
             if (!types) {
@@ -9067,7 +9086,7 @@ namespace ts {
                 || t;
         }
 
-        function solve(st0: InfState): Solution {
+        function solve(st0: SolveState): Solution {
             const env = createMap<Type>();
             const types = createMap<Type>();
             const stack = [ { i: 0, st: st0 } ];
@@ -9128,10 +9147,8 @@ namespace ts {
 
                     // try to unify them
                     // TODO: should check if they are both compound
-                    const infSt: InfState = {
-                        log: [],
-                        polyVars: { ... st.polyVars }
-                    };
+                    const infSt: InfState = mkInfState();
+                    infSt.polyVars = { ... st.polyVars };
 
                     unifyTypes(infSt, x, y);
                     if (infSt.log.length) {
@@ -9167,7 +9184,7 @@ namespace ts {
                     .join('\n');
         }
 
-        function isTyVar(st: InfState, type: Type) {
+        function isTyVar(st: SolveState, type: Type) {
             return (type.flags & TypeFlags.TypeParameter) && st.polyVars[type.id];
         }
 
@@ -9177,8 +9194,18 @@ namespace ts {
             }
 
             if (isTyVar(st, source) || isTyVar(st, target)) {
-                st.log.push([target, source]);
+                st.log.push([source, target]);
                 return true;
+            }
+
+            return false;
+        }
+
+        function isInProcess(st: InfState, source: Type, target: Type) {
+            for (let i = 0; i < st.depth; i++) {
+                if (source === st.sourceStack[i] && target === st.targetStack[i]) {
+                    return true;
+                }
             }
 
             return false;
@@ -9291,8 +9318,26 @@ namespace ts {
 
             source = getApparentType(source);
             if (source.flags & TypeFlags.Object) {
-                // Cut ...
+                if (isInProcess(st, source, target)) {
+                    return;
+                }
+                if (isDeeplyNestedGeneric(source, st.sourceStack, st.depth)
+                    && isDeeplyNestedGeneric(target, st.targetStack, st.depth)
+                ) {
+                    return;
+                }
+
+                const key = source.id + "," + target.id;
+                if (st.visited[key]) {
+                    return;
+                }
+                st.visited[key] = true;
+
+                st.sourceStack[st.depth] = source;
+                st.targetStack[st.depth] = target;
+                st.depth++;
                 uniObjectTypes(st, source, target);
+                st.depth--;
             }
         }
 
@@ -13093,17 +13138,25 @@ namespace ts {
             }
         }
 
-        function tryInfer(node: CallLikeExpression, signature: Signature, argc: number, argv: Expression[]) {
-            const infSt: InfState = {
-                log: [],
-                polyVars: markPolyVars(signature.typeParameters, createMap<boolean>())
-            };
+        function tryInfer(node: CallLikeExpression, signature: Signature, argv: Expression[]) {
+            const st: InfState = mkInfState(signature.typeParameters);
 
-            inferCall(infSt, node, signature, argc, argv);
-            const solution = solve(infSt);
+            const thisType = getThisTypeOfSignature(signature);
+            if (thisType) {
+                const thisArgumentNode = getThisArgumentOfCall(node);
+                const thisArgumentType = thisArgumentNode ? checkExpression(thisArgumentNode) : voidType;
+                unifyTypes(st, thisType, thisArgumentType);
+            }
+
+            // We perform two passes over the arguments. In the first pass we infer from all arguments, but use
+            // wildcards for all context sensitive function expressions.
+            const argc = getEffectiveArgumentCount(node, argv, signature);
+
+            inferCall(st, node, signature, argc, argv);
+            const solution = solve(st);
 
             if (!true) {
-                const us = infSt.log
+                const us = st.log
                     .map(([x, y]) => typeToString(x) + ' ~ ' + typeToString(y))
                     .join('\n');
 
@@ -13153,16 +13206,6 @@ namespace ts {
             // We perform two passes over the arguments. In the first pass we infer from all arguments, but use
             // wildcards for all context sensitive function expressions.
             const argCount = getEffectiveArgumentCount(node, args, signature);
-
-            const solution = tryInfer(node, signature, argCount, args);
-            if (solution.kind === 'success') {
-                const typeVariables = context.signature.typeParameters;
-                // phantom types are mapped to `{}` as before
-                context.inferredTypes = typeVariables.map(v => solution.solution[v.id] || emptyObjectType);
-
-                return;
-            }
-
             for (let i = 0; i < argCount; i++) {
                 const arg = getEffectiveArgument(node, args, i);
                 // If the effective argument is 'undefined', then it is an argument that is present but is synthetic.
@@ -13778,6 +13821,7 @@ namespace ts {
                         ? createInferenceContext(originalCandidate, /*inferUnionTypes*/ false)
                         : undefined;
 
+                    let constrInf: boolean | null = null;
                     while (true) {
                         candidate = originalCandidate;
                         if (candidate.typeParameters) {
@@ -13787,9 +13831,24 @@ namespace ts {
                                 typeArgumentsAreValid = checkTypeArguments(candidate, typeArguments, typeArgumentTypes, /*reportErrors*/ false);
                             }
                             else {
-                                inferTypeArguments(node, candidate, args, excludeArgument, inferenceContext);
-                                typeArgumentsAreValid = inferenceContext.failedTypeParameterIndex === undefined;
-                                typeArgumentTypes = inferenceContext.inferredTypes;
+                                if (constrInf === null) {
+                                    const res = tryInfer(node, candidate, args);
+                                    constrInf = res.kind === 'success';
+
+                                    typeArgumentsAreValid = true;
+                                    if (res.kind === 'success') {
+                                        // phantom types are mapped to `{}` as before
+                                        typeArgumentTypes = candidate.typeParameters.map(v =>
+                                            res.solution[v.id] || emptyObjectType
+                                        );
+                                    }
+                                }
+
+                                if (!constrInf) {
+                                    inferTypeArguments(node, candidate, args, excludeArgument, inferenceContext);
+                                    typeArgumentsAreValid = inferenceContext.failedTypeParameterIndex === undefined;
+                                    typeArgumentTypes = inferenceContext.inferredTypes;
+                                }
                             }
                             if (!typeArgumentsAreValid) {
                                 break;
@@ -13800,7 +13859,7 @@ namespace ts {
                             break;
                         }
                         const index = excludeArgument ? indexOf(excludeArgument, true) : -1;
-                        if (index < 0) {
+                        if (constrInf || index < 0) {
                             return candidate;
                         }
                         excludeArgument[index] = false;
