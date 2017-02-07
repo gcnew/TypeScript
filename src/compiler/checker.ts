@@ -9194,7 +9194,7 @@ namespace ts {
             }
 
             if (isTyVar(st, source) || isTyVar(st, target)) {
-                st.log.push([source, target]);
+                st.log.push([target, source]);
                 return true;
             }
 
@@ -13116,7 +13116,20 @@ namespace ts {
             return getSignatureInstantiation(signature, getInferredTypes(context));
         }
 
-        function inferCall(st: InfState, node: CallLikeExpression, signature: Signature, argc: number, argv: Expression[]) {
+        function inferCall(node: CallLikeExpression, signature: Signature, argv: Expression[], excludes: boolean[] | undefined, mapper?: TypeMapper): InfState {
+            const st: InfState = mkInfState(signature.typeParameters);
+
+            const thisType = getThisTypeOfSignature(signature);
+            if (thisType) {
+                const thisArgumentNode = getThisArgumentOfCall(node);
+                const thisArgumentType = thisArgumentNode ? checkExpression(thisArgumentNode) : voidType;
+                unifyTypes(st, thisArgumentType, thisType);
+            }
+
+            // We perform two passes over the arguments. In the first pass we infer from all arguments, but use
+            // wildcards for all context sensitive function expressions.
+            const argc = getEffectiveArgumentCount(node, argv, signature);
+
             for (let i = 0; i < argc; i++) {
                 const arg = getEffectiveArgument(node, argv, i);
 
@@ -13128,46 +13141,43 @@ namespace ts {
                     // If the effective argument type is 'undefined', there is no synthetic type
                     // for the argument. In that case, we should check the argument.
                     if (argType === undefined) {
-                        // For context sensitive arguments we pass the identityMapper, which is a signal to treat all
-                        // context sensitive function expressions as wildcards
-                        argType = checkExpressionWithContextualType(arg, paramType); // TODO: mapper
+                        // Skip context sensitive arguments
+                        if (excludes && excludes[i]) {
+                            continue;
+                        }
+
+                        argType = checkExpressionWithContextualType(arg, paramType, mapper);
                     }
 
-                    unifyTypes(st, paramType, argType);
+                    unifyTypes(st, argType, paramType);
                 }
             }
+
+            return st;
         }
 
-        function tryInfer(node: CallLikeExpression, signature: Signature, argv: Expression[]) {
-            const st: InfState = mkInfState(signature.typeParameters);
-
-            const thisType = getThisTypeOfSignature(signature);
-            if (thisType) {
-                const thisArgumentNode = getThisArgumentOfCall(node);
-                const thisArgumentType = thisArgumentNode ? checkExpression(thisArgumentNode) : voidType;
-                unifyTypes(st, thisType, thisArgumentType);
-            }
-
-            // We perform two passes over the arguments. In the first pass we infer from all arguments, but use
-            // wildcards for all context sensitive function expressions.
-            const argc = getEffectiveArgumentCount(node, argv, signature);
-
-            inferCall(st, node, signature, argc, argv);
+        function tryInfer(node: CallLikeExpression, signature: Signature, argv: Expression[], excludes: boolean[] | undefined) {
+            const st = inferCall(node, signature, argv, excludes);
             const solution = solve(st);
 
-            if (!true) {
-                const us = st.log
-                    .map(([x, y]) => typeToString(x) + ' ~ ' + typeToString(y))
-                    .join('\n');
+            // FIXME: for debugging
+            false && solutionToString(solution);
 
-                console.log(' -----------');
-                console.log(us);
-
-                console.log('   Solution:');
-                console.log(solutionToString(solution));
+            if (!excludes || solution.kind !== 'success') {
+                return solution;
             }
 
-            return solution;
+            const mapper = createTypeMapper(
+                signature.typeParameters,
+                signature.typeParameters.map(v =>
+                    solution.solution[v.id] || v
+                )
+            );
+
+            const st2 = inferCall(node, signature, argv, undefined, mapper);
+            const solution2 = solve(st2);
+
+            return solution2;
         }
 
         function inferTypeArguments(node: CallLikeExpression, signature: Signature, args: Expression[], excludeArgument: boolean[], context: InferenceContext): void {
@@ -13832,12 +13842,13 @@ namespace ts {
                             }
                             else {
                                 if (constrInf === null) {
-                                    const res = tryInfer(node, candidate, args);
+                                    const res = tryInfer(node, candidate, args, excludeArgument);
                                     constrInf = res.kind === 'success';
 
-                                    typeArgumentsAreValid = true;
                                     if (res.kind === 'success') {
-                                        // phantom types are mapped to `{}` as before
+                                        typeArgumentsAreValid = true;
+
+                                        // phantom types are "erased" - i.e. mapped to `{}` as before
                                         typeArgumentTypes = candidate.typeParameters.map(v =>
                                             res.solution[v.id] || emptyObjectType
                                         );
