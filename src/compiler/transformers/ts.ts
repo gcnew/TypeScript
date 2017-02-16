@@ -323,6 +323,7 @@ namespace ts {
                 case SyntaxKind.ConstructorType:
                 case SyntaxKind.FunctionType:
                 case SyntaxKind.TypeQuery:
+                case SyntaxKind.NameQuery:
                 case SyntaxKind.TypeReference:
                 case SyntaxKind.UnionType:
                 case SyntaxKind.IntersectionType:
@@ -1740,6 +1741,7 @@ namespace ts {
                     return serializeUnionOrIntersectionType(<UnionOrIntersectionTypeNode>node);
 
                 case SyntaxKind.TypeQuery:
+                case SyntaxKind.NameQuery:
                 case SyntaxKind.TypeOperator:
                 case SyntaxKind.IndexedAccessType:
                 case SyntaxKind.MappedType:

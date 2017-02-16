@@ -728,7 +728,7 @@ namespace ts {
             case SyntaxKind.PropertyAccessExpression:
             case SyntaxKind.ThisKeyword:
                 const parent = node.parent;
-                if (parent.kind === SyntaxKind.TypeQuery) {
+                if (parent.kind === SyntaxKind.TypeQuery || parent.kind === SyntaxKind.NameQuery) {
                     return false;
                 }
                 // Do not recursively call isPartOfTypeNode on the parent. In the example:
@@ -1298,9 +1298,9 @@ namespace ts {
                 while (node.parent.kind === SyntaxKind.QualifiedName) {
                     node = node.parent;
                 }
-                return node.parent.kind === SyntaxKind.TypeQuery || isJSXTagName(node);
+                return node.parent.kind === SyntaxKind.TypeQuery || node.parent.kind === SyntaxKind.NameQuery || isJSXTagName(node);
             case SyntaxKind.Identifier:
-                if (node.parent.kind === SyntaxKind.TypeQuery || isJSXTagName(node)) {
+                if (node.parent.kind === SyntaxKind.TypeQuery || node.parent.kind === SyntaxKind.NameQuery || isJSXTagName(node)) {
                     return true;
                 }
             // fall through
@@ -1815,7 +1815,7 @@ namespace ts {
                     while (parent.kind === SyntaxKind.QualifiedName) {
                         parent = parent.parent;
                     }
-                    return parent.kind === SyntaxKind.TypeQuery;
+                    return parent.kind === SyntaxKind.TypeQuery || node.parent.kind === SyntaxKind.NameQuery;
                 }
                 return false;
             case SyntaxKind.BindingElement:

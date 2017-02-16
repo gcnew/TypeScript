@@ -127,6 +127,8 @@ namespace ts {
                     visitNode(cbNode, (<TypePredicateNode>node).type);
             case SyntaxKind.TypeQuery:
                 return visitNode(cbNode, (<TypeQueryNode>node).exprName);
+            case SyntaxKind.NameQuery:
+                return visitNode(cbNode, (<NameQueryNode>node).exprName);
             case SyntaxKind.TypeLiteral:
                 return visitNodes(cbNodes, (<TypeLiteralNode>node).members);
             case SyntaxKind.ArrayType:
@@ -2080,6 +2082,13 @@ namespace ts {
             return finishNode(node);
         }
 
+        function parseNameQuery(): NameQueryNode {
+            const node = <NameQueryNode>createNode(SyntaxKind.NameQuery);
+            parseExpected(SyntaxKind.NameOfKeyword);
+            node.exprName = parseEntityName(/*allowReservedWords*/ true);
+            return finishNode(node);
+        }
+
         function parseTypeParameter(): TypeParameterDeclaration {
             const node = <TypeParameterDeclaration>createNode(SyntaxKind.TypeParameter);
             node.name = parseIdentifier();
@@ -2544,6 +2553,8 @@ namespace ts {
                 }
                 case SyntaxKind.TypeOfKeyword:
                     return parseTypeQuery();
+                case SyntaxKind.NameOfKeyword:
+                    return parseNameQuery();
                 case SyntaxKind.OpenBraceToken:
                     return lookAhead(isStartOfMappedType) ? parseMappedType() : parseTypeLiteral();
                 case SyntaxKind.OpenBracketToken:

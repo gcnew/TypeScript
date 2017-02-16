@@ -161,6 +161,7 @@
         ThrowKeyword,
         TrueKeyword,
         TryKeyword,
+        NameOfKeyword,
         TypeOfKeyword,
         VarKeyword,
         VoidKeyword,
@@ -230,6 +231,7 @@
         FunctionType,
         ConstructorType,
         TypeQuery,
+        NameQuery,
         TypeLiteral,
         ArrayType,
         TupleType,
@@ -875,6 +877,11 @@
 
     export interface TypeQueryNode extends TypeNode {
         kind: SyntaxKind.TypeQuery;
+        exprName: EntityName;
+    }
+
+    export interface NameQueryNode extends TypeNode {
+        kind: SyntaxKind.NameQuery;
         exprName: EntityName;
     }
 

@@ -468,6 +468,8 @@ namespace ts {
                     return emitConstructorType(<ConstructorTypeNode>node);
                 case SyntaxKind.TypeQuery:
                     return emitTypeQuery(<TypeQueryNode>node);
+                case SyntaxKind.NameQuery:
+                    return emitNameQuery(<NameQueryNode>node);
                 case SyntaxKind.TypeLiteral:
                     return emitTypeLiteral(<TypeLiteralNode>node);
                 case SyntaxKind.ArrayType:
@@ -954,6 +956,11 @@ namespace ts {
 
         function emitTypeQuery(node: TypeQueryNode) {
             write("typeof ");
+            emit(node.exprName);
+        }
+
+        function emitNameQuery(node: NameQueryNode) {
+            write("nameof ");
             emit(node.exprName);
         }
 

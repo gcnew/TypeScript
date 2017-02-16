@@ -1051,8 +1051,8 @@ namespace ts {
                 // second -> edge that represents post-finally flow.
                 // these edges are used in following scenario:
                 // let a; (1)
-                // try { a = someOperation(); (2)} 
-                // finally { (3) console.log(a) } (4) 
+                // try { a = someOperation(); (2)}
+                // finally { (3) console.log(a) } (4)
                 // (5) a
 
                 // flow graph for this case looks roughly like this (arrows show ):
@@ -1064,11 +1064,11 @@ namespace ts {
                 // In case when we walk the flow starting from inside the finally block we want to take edge '*****' into account
                 // since it ensures that finally is always reachable. However when we start outside the finally block and go through label (5)
                 // then edge '*****' should be discarded because label 4 is only reachable if post-finally label-4 is reachable
-                // Simply speaking code inside finally block is treated as reachable as pre-try-flow 
+                // Simply speaking code inside finally block is treated as reachable as pre-try-flow
                 // since we conservatively assume that any line in try block can throw or return in which case we'll enter finally.
                 // However code after finally is reachable only if control flow was not abrupted in try/catch or finally blocks - it should be composed from
                 // final flows of these blocks without taking pre-try flow into account.
-                // 
+                //
                 // extra edges that we inject allows to control this behavior
                 // if when walking the flow we step on post-finally edge - we can mark matching pre-finally edge as locked so it will be skipped.
                 const preFinallyFlow: PreFinallyFlow = { flags: FlowFlags.PreFinally, antecedent: preTryFlow, lock: {} };
@@ -3203,6 +3203,7 @@ namespace ts {
             case SyntaxKind.FunctionType:
             case SyntaxKind.ConstructorType:
             case SyntaxKind.TypeQuery:
+            case SyntaxKind.NameQuery:
             case SyntaxKind.TypeLiteral:
             case SyntaxKind.ArrayType:
             case SyntaxKind.TupleType:

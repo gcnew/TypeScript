@@ -2049,7 +2049,7 @@ namespace ts {
         function isEntityNameVisible(entityName: EntityNameOrEntityNameExpression, enclosingDeclaration: Node): SymbolVisibilityResult {
             // get symbol of the first identifier of the entityName
             let meaning: SymbolFlags;
-            if (entityName.parent.kind === SyntaxKind.TypeQuery || isExpressionWithTypeArgumentsInClassExtendsClause(entityName.parent)) {
+            if (entityName.parent.kind === SyntaxKind.TypeQuery || entityName.parent.kind === SyntaxKind.NameQuery || isExpressionWithTypeArgumentsInClassExtendsClause(entityName.parent)) {
                 // Typeof value
                 meaning = SymbolFlags.Value | SymbolFlags.ExportValue;
             }
@@ -5870,6 +5870,18 @@ namespace ts {
             return links.resolvedType;
         }
 
+        function getTypeFromNameQueryNode(node: NameQueryNode): Type {
+            const links = getNodeLinks(node);
+            if (!links.resolvedType) {
+                checkExpression(node.exprName);
+                let expr = node.exprName;
+                let symb = getSymbolAtLocation(expr)
+                debugger;
+                links.resolvedType = getLiteralTypeFromPropertyName(symb);
+            }
+            return links.resolvedType;
+        }
+
         function getTypeOfGlobalSymbol(symbol: Symbol, arity: number): ObjectType {
 
             function getTypeDeclaration(symbol: Symbol): Declaration {
@@ -6707,6 +6719,8 @@ namespace ts {
                     return getTypeFromTypeReference(<ExpressionWithTypeArguments>node);
                 case SyntaxKind.TypeQuery:
                     return getTypeFromTypeQueryNode(<TypeQueryNode>node);
+                case SyntaxKind.NameQuery:
+                    return getTypeFromNameQueryNode(<NameQueryNode>node);
                 case SyntaxKind.ArrayType:
                 case SyntaxKind.JSDocArrayType:
                     return getTypeFromArrayTypeNode(<ArrayTypeNode>node);
@@ -9440,6 +9454,7 @@ namespace ts {
             while (node) {
                 switch (node.kind) {
                     case SyntaxKind.TypeQuery:
+                    case SyntaxKind.NameQuery:
                         return true;
                     case SyntaxKind.Identifier:
                     case SyntaxKind.QualifiedName:
@@ -10053,7 +10068,7 @@ namespace ts {
                     }
                     let type: FlowType;
                     if (flow.flags & FlowFlags.AfterFinally) {
-                        // block flow edge: finally -> pre-try (for larger explanation check comment in binder.ts - bindTryStatement 
+                        // block flow edge: finally -> pre-try (for larger explanation check comment in binder.ts - bindTryStatement
                         (<AfterFinallyFlow>flow).locked = true;
                         type = getTypeAtFlowNode((<AfterFinallyFlow>flow).antecedent);
                         (<AfterFinallyFlow>flow).locked = false;
@@ -10221,7 +10236,7 @@ namespace ts {
                 let seenIncomplete = false;
                 for (const antecedent of flow.antecedents) {
                     if (antecedent.flags & FlowFlags.PreFinally && (<PreFinallyFlow>antecedent).lock.locked) {
-                        // if flow correspond to branch from pre-try to finally and this branch is locked - this means that 
+                        // if flow correspond to branch from pre-try to finally and this branch is locked - this means that
                         // we initially have started following the flow outside the finally block.
                         // in this case we should ignore this branch.
                         continue;
@@ -16485,6 +16500,10 @@ namespace ts {
             getTypeFromTypeQueryNode(node);
         }
 
+        function checkNameQuery(node: NameQueryNode) {
+            getTypeFromNameQueryNode(node);
+        }
+
         function checkTypeLiteral(node: TypeLiteralNode) {
             forEach(node.members, checkSourceElement);
             if (produceDiagnostics) {
@@ -19897,6 +19916,8 @@ namespace ts {
                     return checkTypePredicate(<TypePredicateNode>node);
                 case SyntaxKind.TypeQuery:
                     return checkTypeQuery(<TypeQueryNode>node);
+                case SyntaxKind.NameQuery:
+                    return checkNameQuery(<NameQueryNode>node);
                 case SyntaxKind.TypeLiteral:
                     return checkTypeLiteral(<TypeLiteralNode>node);
                 case SyntaxKind.ArrayType:

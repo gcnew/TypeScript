@@ -414,6 +414,8 @@ namespace ts {
                     return emitTypeReference(<TypeReferenceNode>type);
                 case SyntaxKind.TypeQuery:
                     return emitTypeQuery(<TypeQueryNode>type);
+                case SyntaxKind.NameQuery:
+                    return emitNameQuery(<NameQueryNode>type);
                 case SyntaxKind.ArrayType:
                     return emitArrayType(<ArrayTypeNode>type);
                 case SyntaxKind.TupleType:
@@ -495,6 +497,11 @@ namespace ts {
 
             function emitTypeQuery(type: TypeQueryNode) {
                 write("typeof ");
+                emitEntityName(type.exprName);
+            }
+
+            function emitNameQuery(type: NameQueryNode) {
+                write("nameof ");
                 emitEntityName(type.exprName);
             }
 
