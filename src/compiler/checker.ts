@@ -1,4 +1,4 @@
-/// <reference path="moduleNameResolver.ts"/>
+﻿/// <reference path="moduleNameResolver.ts"/>
 /// <reference path="binder.ts"/>
 
 /* @internal */
@@ -26,6 +26,8 @@ namespace ts {
 
         return symbol.id;
     }
+
+    declare let gChecker: TypeChecker;
 
     export function createTypeChecker(host: TypeCheckerHost, produceDiagnostics: boolean): TypeChecker {
         // Cancellation that controls whether or not we can cancel in the middle of type checking.
@@ -216,6 +218,8 @@ namespace ts {
                 return resolveName(location, name, meaning, /*nameNotFoundMessage*/ undefined, name);
             },
         };
+
+        gChecker = checker;
 
         const tupleTypes: GenericType[] = [];
         const unionTypes = createMap<UnionType>();
@@ -8049,10 +8053,22 @@ namespace ts {
             if (signature.typePredicate) {
                 freshTypePredicate = cloneTypePredicate(signature.typePredicate, mapper);
             }
+            const returnType = instantiateType(signature.resolvedReturnType, mapper);
+            const callSignature = returnType && getSingleCallSignature(returnType);
+            if  (callSignature && !callSignature.typeParameters && hasFreeTypeVars(callSignature)) {
+                // this is an inferred signature
+                const paramTypes = map(callSignature.parameters, getTypeOfSymbol);
+                if (!contains(paramTypes, callSignature.resolvedReturnType)) {
+                    paramTypes.push(callSignature.resolvedReturnType);
+                }
+                const typeParams = <TypeParameter[]>filter(paramTypes, type => !!(type.flags & TypeFlags.TypeParameter));
+                Debug.assert(!!typeParams.length);
+                callSignature.typeParameters = typeParams;
+            }
             const result = createSignature(signature.declaration, freshTypeParameters,
                 signature.thisParameter && instantiateSymbol(signature.thisParameter, mapper),
                 instantiateList(signature.parameters, mapper, instantiateSymbol),
-                /*resolvedReturnType*/ undefined,
+                returnType,
                 freshTypePredicate,
                 signature.minArgumentCount, signature.hasRestParameter, signature.hasLiteralTypes);
             result.target = signature;
@@ -14949,6 +14965,449 @@ namespace ts {
             return getSignatureInstantiation(signature, getInferredTypes(context));
         }
 
+        type TypeParamInfo = {
+            widen: boolean
+        }
+
+        type InfCtx = {
+            polyVars: Map<Type>,
+            typeParams: Map<TypeParamInfo>,
+            constraints: [Type, Type][]
+            deferredConstraints: [Type, Type][],
+
+            symbolStack: Symbol[],
+            visited: Map<boolean>
+        }
+
+        type Heya = {
+            types: Type[],
+            firstMet?: TypeVariable,
+            bounds: Type[]
+        }
+
+        function mkInferenceContext(signature: Signature): InfCtx {
+            const polyVars = ts.createMap<Type>();
+            const typeParams = ts.createMap<TypeParamInfo>();
+
+            for (const p of signature.typeParameters) {
+                polyVars.set(String(p.id), p);
+                typeParams.set(String(p.id), { widen: false });
+            }
+
+            return {
+                polyVars,
+                typeParams,
+                constraints: [],
+                deferredConstraints: [],
+
+                symbolStack: [],
+                visited: createMap<boolean>()
+            };
+        }
+
+        function markPolyVars(ctx: InfCtx, signature: Signature) {
+            if (signature.typeParameters) {
+                for (const p of signature.typeParameters) {
+                    ctx.polyVars.set(String(p.id), p);
+                }
+            }
+        }
+
+        function inferTypeArguments2(
+            node: CallLikeExpression,
+            signature: Signature,
+            args: Expression[],
+            excludes: boolean[],
+            inferenceContext: InferenceContext
+        ): void {
+            const ctx = mkInferenceContext(signature);
+
+            const thisType = getThisTypeOfSignature(signature);
+            if (thisType) {
+                const thisArgumentNode = getThisArgumentOfCall(node);
+                const thisArgumentType = thisArgumentNode ? checkExpression(thisArgumentNode) : voidType;
+                uniTypes(ctx, thisArgumentType, thisType);
+            }
+
+            const argCount = getEffectiveArgumentCount(node, args, signature);
+            for (let i = 0; i < argCount; i++) {
+                const arg = getEffectiveArgument(node, args, i);
+                // If the effective argument is 'undefined', then it is an argument that is present but is synthetic.
+                if (arg === undefined || arg.kind !== SyntaxKind.OmittedExpression) {
+                    const paramType = getTypeAtPosition(signature, i);
+                    let argType = getEffectiveArgumentType(node, i);
+
+                    // If the effective argument type is 'undefined', there is no synthetic type
+                    // for the argument. In that case, we should check the argument.
+                    if (argType === undefined) {
+                        // For context sensitive arguments we pass the identityMapper, which is a signal to treat all
+                        // context sensitive function expressions as wildcards
+                        // const mapper = excludeArgument && excludeArgument[i] !== undefined ? identityMapper : inferenceMapper;
+                        argType = checkExpressionWithContextualType(arg, paramType, undefined);
+                    }
+
+                    uniTypes(ctx, argType, paramType);
+                }
+            }
+
+            const st = solve(ctx);
+            const arr: {
+                tyVars: string[],
+                uni: {
+                    types: string[],
+                    firstMet?: string,
+                    bounds: string[]
+                }
+            }[] = [];
+
+            let counter = 0;
+            const getId = (x: any) => {
+                return x.id !== undefined ? x.id : (x.id = counter++);
+            };
+
+            signature.typeParameters.forEach(
+                (t, i) => {
+                    const h = st.get(String(t.id));
+                    inferenceContext.inferences[i].primary = h ? h.types.length && h.types ||
+                                                                 h.bounds.length && h.bounds ||
+                                                                 [h.firstMet]
+                                                               : [];
+                }
+            );
+
+            st.forEach((v, k) => {
+                const id = getId(v);
+                if (!arr[id]) {
+                    arr[id] = {
+                        tyVars: [],
+                        uni: {
+                            types: v.types.map(t => typeToString(t)),
+                            firstMet: v.firstMet ? typeToString(v.firstMet) : undefined,
+                            bounds: v.bounds .map(t => typeToString(t)),
+                        }
+                    };
+                }
+
+                arr[id].tyVars.push(typeToString(ctx.polyVars.get(k)));
+            });
+
+            getInferredTypes(inferenceContext);
+        }
+
+        function addBounds(tv: TypeVariable, hy: Heya, ctx: InfCtx) {
+            // type parameter constraints are checked anyway
+            // if (ctx.typeParams.get(String(tv.id))) {
+            //     return;
+            // }
+
+            const constr = (tv.flags & TypeFlags.TypeParameter)
+                ? getConstraintOfTypeParameter(<TypeParameter> tv)
+                : undefined;
+
+            if (constr) {
+                hy.bounds.push(constr);
+            }
+        }
+
+        function bind(tv: TypeVariable, t: Type, ctx: InfCtx, st: Map<Heya>) {
+            const isPolyVar = (t.flags & TypeFlags.TypeVariable)
+                && ctx.polyVars.has(String(t.id));
+            const ts = st.get(String(t.id));
+            let tvs = st.get(String(tv.id));
+
+            // not a poly var or no unifications
+            if (!isPolyVar || !ts) {
+                if (!tvs) {
+                    tvs  = {
+                        types: [],
+                        bounds: []
+                    };
+
+                    addBounds(tv, tvs, ctx);
+                }
+
+                if (!isPolyVar) {
+                    tvs.types.push(t);
+                } else {
+                    if (!tvs.firstMet) {
+                        tvs.firstMet = <TypeVariable> t;
+                    }
+                    addBounds(<TypeVariable> t, tvs, ctx);
+                    st.set(String(t.id), tvs);
+                }
+
+                st.set(String(tv.id), tvs);
+                return;
+            }
+
+            // tv has no unifications
+            if (!tvs) {
+                addBounds(tv, ts, ctx);
+                st.set(String(tv.id), ts);
+                return;
+            }
+
+            // both have unifications - merge
+            tvs.types.push.apply(tvs.types, ts.types);
+            tvs.bounds.push.apply(tvs.bounds, ts.bounds);
+            tvs.firstMet = tvs.firstMet || ts.firstMet;
+
+            // update all ts to be tvs
+            st.forEach((v, k) => {
+                if (v === ts) {
+                    st.set(k, tvs);
+                }
+            });
+        }
+
+        function solve(ctx: InfCtx) {
+            const st = createMap<Heya>();
+
+            for (const [t1, t2] of ctx.constraints) {
+                if (t1.flags & TypeFlags.TypeVariable && ctx.polyVars.get(String(t1.id))) {
+                    bind(<TypeVariable> t1, t2, ctx, st);
+                    continue;
+                }
+                if (t2.flags & TypeFlags.TypeVariable && ctx.polyVars.get(String(t2.id))) {
+                    bind(<TypeVariable> t2, t1, ctx, st);
+                    continue;
+                }
+                throw new Error('HOW????');
+            }
+
+            return st;
+        }
+
+        function uniTypes(ctx: InfCtx, source: Type, target: Type) {
+            if (!couldContainTypeVariables(target) && !couldContainTypeVariables(source)) {
+                return;
+            }
+            if (source === target) {
+                return;
+            }
+            if (source.aliasSymbol && source.aliasTypeArguments && source.aliasSymbol === target.aliasSymbol) {
+                // Source and target are types originating in the same generic type alias declaration.
+                // Simply infer from source type arguments to target type arguments.
+                const sourceTypes = source.aliasTypeArguments;
+                const targetTypes = target.aliasTypeArguments;
+                for (let i = 0; i < sourceTypes.length; i++) {
+                    uniTypes(ctx, sourceTypes[i], targetTypes[i]);
+                }
+                return;
+            }
+            if (source.flags & TypeFlags.Union && target.flags & TypeFlags.Union && !(source.flags & TypeFlags.EnumLiteral && target.flags & TypeFlags.EnumLiteral) ||
+                source.flags & TypeFlags.Intersection && target.flags & TypeFlags.Intersection) {
+
+                // Source and target are both unions or both intersections. If source and target
+                // are the same type, just relate each constituent type to itself.
+                // if (source === target) {
+                //     for (const t of (<UnionOrIntersectionType>source).types) {
+                //         uniTypes(t, t);
+                //     }
+                //     return;
+                // }
+
+                // Find each source constituent type that has an identically matching target constituent
+                // type, and for each such type infer from the type to itself. When inferring from a
+                // type to itself we effectively find all type parameter occurrences within that type
+                // and infer themselves as their type arguments. We have special handling for numeric
+                // and string literals because the number and string types are not represented as unions
+                // of all their possible values.
+                let matchingTypes: Type[];
+                for (const t of (<UnionOrIntersectionType>source).types) {
+                    if (typeIdenticalToSomeType(t, (<UnionOrIntersectionType>target).types)) {
+                        (matchingTypes || (matchingTypes = [])).push(t);
+                        // uniTypes(t, t);
+                    }
+                    else if (t.flags & (TypeFlags.NumberLiteral | TypeFlags.StringLiteral)) {
+                        const b = getBaseTypeOfLiteralType(t);
+                        if (typeIdenticalToSomeType(b, (<UnionOrIntersectionType>target).types)) {
+                            (matchingTypes || (matchingTypes = [])).push(t, b);
+                        }
+                    }
+                }
+                // Next, to improve the quality of inferences, reduce the source and target types by
+                // removing the identically matched constituents. For example, when inferring from
+                // 'string | string[]' to 'string | T' we reduce the types to 'string[]' and 'T'.
+                if (matchingTypes) {
+                    source = removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>source, matchingTypes);
+                    target = removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>target, matchingTypes);
+                }
+
+                if (source === target) {
+                    return;
+                }
+            }
+            if (target.flags & TypeFlags.TypeVariable && ctx.polyVars.has(String(target.id))
+                || source.flags & TypeFlags.TypeVariable && ctx.polyVars.has(String(source.id))) {
+                ctx.constraints.push([target, source]);
+                return;
+            }
+            else if (getObjectFlags(source) & ObjectFlags.Reference && getObjectFlags(target) & ObjectFlags.Reference && (<TypeReference>source).target === (<TypeReference>target).target) {
+                // If source and target are references to the same generic type, infer from type arguments
+                const sourceTypes = (<TypeReference>source).typeArguments || emptyArray;
+                const targetTypes = (<TypeReference>target).typeArguments || emptyArray;
+                const count = sourceTypes.length < targetTypes.length ? sourceTypes.length : targetTypes.length;
+                for (let i = 0; i < count; i++) {
+                    uniTypes(ctx, sourceTypes[i], targetTypes[i]);
+                }
+            }
+            else if (target.flags & TypeFlags.UnionOrIntersection) {
+                const targetTypes = (<UnionOrIntersectionType>target).types;
+                let typeVariableCount = 0;
+                let typeVariable: TypeVariable;
+                // First infer to each type in union or intersection that isn't a type variable
+                for (const t of targetTypes) {
+                    if (t.flags & TypeFlags.TypeVariable && ctx.typeParams.has(String(t.id))) {
+                        typeVariable = <TypeVariable>t;
+                        typeVariableCount++;
+                    }
+                    else {
+                        uniTypes(ctx, source, t);
+                    }
+                }
+                // Next, if target containings a single naked type variable, make a secondary inference to that type
+                // variable. This gives meaningful results for union types in co-variant positions and intersection
+                // types in contra-variant positions (such as callback parameters).
+                if (typeVariableCount === 1) {
+                    ctx.deferredConstraints.push([typeVariable, source]);
+                    return;
+                }
+            }
+            else if (source.flags & TypeFlags.UnionOrIntersection) {
+                // Source is a union or intersection type, infer from each constituent type
+                const sourceTypes = (<UnionOrIntersectionType>source).types;
+                for (const sourceType of sourceTypes) {
+                    uniTypes(ctx, sourceType, target);
+                }
+            }
+            else {
+                source = getApparentType(source);
+                if (source.flags & TypeFlags.Object) {
+                    const key = source.id + "," + target.id;
+                    if (ctx.visited.get(key)) {
+                        return;
+                    }
+                    ctx.visited.set(key, true);
+                    // If we are already processing another target type with the same associated symbol (such as
+                    // an instantiation of the same generic type), we do not explore this target as it would yield
+                    // no further inferences. We exclude the static side of classes from this check since it shares
+                    // its symbol with the instance side which would lead to false positives.
+                    const isNonConstructorObject = target.flags & TypeFlags.Object &&
+                        !(getObjectFlags(target) & ObjectFlags.Anonymous && target.symbol && target.symbol.flags & SymbolFlags.Class);
+                    const symbol = isNonConstructorObject ? target.symbol : undefined;
+                    if (symbol) {
+                        if (contains(ctx.symbolStack, symbol)) {
+                            return;
+                        }
+                        ctx.symbolStack.push(symbol);
+                        uniObjectTypes(ctx, source, target);
+                        ctx.symbolStack.pop();
+                    }
+                    else {
+                        uniObjectTypes(ctx, source, target);
+                    }
+                }
+            }
+        }
+
+        function uniObjectTypes(ctx: InfCtx, source: Type, target: Type) {
+            if (getObjectFlags(target) & ObjectFlags.Mapped) {
+                const constraintType = getConstraintTypeFromMappedType(<MappedType>target);
+                if (constraintType.flags & TypeFlags.Index) {
+                    // We're inferring from some source type S to a homomorphic mapped type { [P in keyof T]: X },
+                    // where T is a type variable. Use inferTypeForHomomorphicMappedType to infer a suitable source
+                    // type and then make a secondary inference from that type to T. We make a secondary inference
+                    // such that direct inferences to T get priority over inferences to Partial<T>, for example.
+                    const tyVar = (<IndexType>constraintType).type;
+                    if (ctx.typeParams.has(String(tyVar.id))) {
+                        const inferredType = inferTypeForHomomorphicMappedType(source, <MappedType>target);
+                        if (inferredType) {
+                            ctx.deferredConstraints.push([tyVar, inferredType]);
+                        }
+                    }
+                    return;
+                }
+                if (constraintType.flags & TypeFlags.TypeParameter) {
+                    // We're inferring from some source type S to a mapped type { [P in T]: X }, where T is a type
+                    // parameter. Infer from 'keyof S' to T and infer from a union of each property type in S to X.
+                    uniTypes(ctx, getIndexType(source), constraintType);
+                    uniTypes(
+                        ctx,
+                        getUnionType(map(getPropertiesOfType(source), getTypeOfSymbol)),
+                        getTemplateTypeFromMappedType(<MappedType>target)
+                    );
+
+                    return;
+                }
+            }
+            uniProperties(ctx, source, target);
+            uniSignatures(ctx, source, target, SignatureKind.Call);
+            uniSignatures(ctx, source, target, SignatureKind.Construct);
+            uniIndexTypes(ctx, source, target);
+        }
+
+        function uniProperties(ctx: InfCtx, source: Type, target: Type) {
+            const properties = getPropertiesOfObjectType(target);
+            for (const targetProp of properties) {
+                const sourceProp = getPropertyOfObjectType(source, targetProp.name);
+                if (sourceProp) {
+                    uniTypes(ctx, getTypeOfSymbol(sourceProp), getTypeOfSymbol(targetProp));
+                }
+            }
+        }
+
+        function uniSignatures(ctx: InfCtx, source: Type, target: Type, kind: SignatureKind) {
+            const sourceSignatures = getSignaturesOfType(source, kind);
+            const targetSignatures = getSignaturesOfType(target, kind);
+            const sourceLen = sourceSignatures.length;
+            const targetLen = targetSignatures.length;
+            const len = sourceLen < targetLen ? sourceLen : targetLen;
+            for (let i = 0; i < len; i++) {
+                const src = sourceSignatures[sourceLen - len + i];
+                const tgt = targetSignatures[targetLen - len + i];
+                uniSignature(ctx, src, tgt);
+            }
+        }
+
+        function uniSignature(ctx: InfCtx, source: Signature, target: Signature) {
+            markPolyVars(ctx, source);
+            markPolyVars(ctx, target);
+
+            forEachMatchingParameterType(source, target, (src, tgt) => {
+                uniTypes(ctx, src, tgt)
+            });
+
+            if (source.typePredicate && target.typePredicate && source.typePredicate.kind === target.typePredicate.kind) {
+                uniTypes(ctx, source.typePredicate.type, target.typePredicate.type);
+            }
+            else {
+                uniTypes(ctx, getReturnTypeOfSignature(source), getReturnTypeOfSignature(target));
+            }
+        }
+
+        function uniIndexTypes(ctx: InfCtx, source: Type, target: Type) {
+            const targetStringIndexType = getIndexTypeOfType(target, IndexKind.String);
+            if (targetStringIndexType) {
+                const sourceIndexType = getIndexTypeOfType(source, IndexKind.String) ||
+                    getImplicitIndexTypeOfType(source, IndexKind.String);
+                if (sourceIndexType) {
+                    uniTypes(ctx, sourceIndexType, targetStringIndexType);
+                }
+            }
+            const targetNumberIndexType = getIndexTypeOfType(target, IndexKind.Number);
+            if (targetNumberIndexType) {
+                const sourceIndexType = getIndexTypeOfType(source, IndexKind.Number) ||
+                    getIndexTypeOfType(source, IndexKind.String) ||
+                    getImplicitIndexTypeOfType(source, IndexKind.Number);
+                if (sourceIndexType) {
+                    uniTypes(ctx, sourceIndexType, targetNumberIndexType);
+                }
+            }
+        }
+
+        // =====================================================================================================================
+
         function inferTypeArguments(node: CallLikeExpression, signature: Signature, args: Expression[], excludeArgument: boolean[], context: InferenceContext): Type[] {
             const inferences = context.inferences;
 
@@ -17618,6 +18077,16 @@ namespace ts {
             }
 
             return type;
+        }
+
+        function isPolymorphicSignature(signature: Signature | undefined) {
+            return signature && (signature.typeParameters || hasFreeTypeVars(signature));
+        }
+
+        function hasFreeTypeVars(signature: Signature) {
+            false && isPolymorphicSignature;
+            return signature.resolvedReturnType && signature.resolvedReturnType.flags & TypeFlags.TypeParameter
+                   || forEach(signature.parameters, (symb) => getTypeOfSymbol(symb).flags & TypeFlags.TypeParameter);
         }
 
         /**

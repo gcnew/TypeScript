@@ -280,9 +280,9 @@ var builtLocalCompiler = path.join(builtLocalDirectory, compilerFilename);
     */
 function compileFile(outFile, sources, prereqs, prefixes, useBuiltCompiler, opts, callback) {
     file(outFile, prereqs, function() {
-        if (process.env.USE_TRANSFORMS === "false") {
+        //if (process.env.USE_TRANSFORMS === "false") {
             useBuiltCompiler = false;
-        }
+        //}
         var startCompileTime = mark();
         opts = opts || {};
         var compilerPath = useBuiltCompiler ? builtLocalCompiler : LKGCompiler;
@@ -342,7 +342,7 @@ function compileFile(outFile, sources, prereqs, prefixes, useBuiltCompiler, opts
         else {
             options += " --lib es5"
         }
-        options += " --noUnusedLocals --noUnusedParameters";
+        // options += " --noUnusedLocals --noUnusedParameters";
 
         var cmd = host + " " + compilerPath + " " + options + " ";
         cmd = cmd + sources.join(" ");
