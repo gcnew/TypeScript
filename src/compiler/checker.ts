@@ -15324,12 +15324,18 @@ namespace ts {
         }
 
         function solve(st: InfState, ctx: InfCtx) {
-            do {
+            while (true) {
                 unifyTyVars(st, ctx);
+                if (promoteComplicated(st, ctx)) {
+                    continue;
+                }
                 if (!unifySimple(st)) {
                     return 'reduce_fail';
                 }
-            } while (promote(st, ctx));
+                if (!promoteDeferred(st, ctx)) {
+                    break;
+                }
+            }
 
             // unsolvable constraints :/
             if (ctx.deferredConstraints.length) {
@@ -15375,7 +15381,7 @@ namespace ts {
             return result;
         }
 
-        function promote(st: InfState, ctx: InfCtx): boolean {
+        function promoteComplicated(st: InfState, ctx: InfCtx): boolean {
             let anyPromoted = false;
 
             ctx.constraints = [];
@@ -15384,29 +15390,31 @@ namespace ts {
                     return;
                 }
 
-                const last = h.complicated.reduce((acc, t) => {
-                    uniTypes(ctx, acc, t);
-                    return t;
-                });
+                for (const c of h.complicated) {
+                    for (const t of h.types) {
+                        uniTypes(ctx, t, c);
+                    }
+                    h.types.push(c);
+                }
 
                 anyPromoted = true;
                 h.complicated = undefined;
-                h.types.push(last);
             });
 
-            if (anyPromoted) {
-                return true;
-            }
+            return anyPromoted
+        }
 
+        function promoteDeferred(st: InfState, ctx: InfCtx): boolean {
             // try to solve any of the deferreds
-            if (ctx.deferredConstraints.length) {
-                debugger;
+            if (!ctx.deferredConstraints.length) {
+                return false;
             }
             // ctx.deferredConstraints = ctx.deferredConstraints.filter(dc => {
             //     dc
             // });
 
-            return anyPromoted;
+            debugger;
+            return true;
         }
 
         function uniTypes(ctx: InfCtx, source: Type, target: Type) {
