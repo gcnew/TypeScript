@@ -1,4 +1,4 @@
-﻿/// <reference path="moduleNameResolver.ts"/>
+/// <reference path="moduleNameResolver.ts"/>
 /// <reference path="binder.ts"/>
 
 /* @internal */
@@ -54,6 +54,7 @@ namespace ts {
 
         const emptyArray: any[] = [];
         const emptySymbols = createMap<Symbol>();
+        const emptyTyVars = createMap<TypeVariable>();
 
         const compilerOptions = host.getCompilerOptions();
         const languageVersion = getEmitScriptTarget(compilerOptions);
@@ -10246,6 +10247,89 @@ namespace ts {
             };
         }
 
+        function mapMerge<T>(target: Map<T>, source: Map<T>) {
+            source.forEach((sourceVal, k) => {
+                const targetVal = target.get(k);
+
+                if (targetVal && targetVal !== sourceVal) {
+                    Debug.fail('Bad merge');
+                }
+
+                target.set(k, sourceVal);
+            });
+        }
+
+        function collectTypeVariables(type: Type, ctx: InfCtx): Map<TypeVariable> {
+            const tid = String(type.id);
+            const cached = ctx.tyVarCache.get(tid);
+            if (cached) {
+                return cached;
+            }
+
+            if (type.flags & TypeFlags.TypeVariable) {
+                if (!ctx.polyVars.get(tid)) {
+                    return emptyTyVars;
+                }
+
+                const map = createMap<TypeVariable>();
+                map.set(tid, <TypeVariable> type);
+                ctx.tyVarCache.set(tid, map);
+
+                return map;
+            }
+
+            let signatures;
+            let types: Type[];
+            const objectFlags = getObjectFlags(type);
+            if (objectFlags & ObjectFlags.Reference) {
+                types = (<TypeReference>type).typeArguments;
+            }
+            else if (type.flags & TypeFlags.UnionOrIntersection) {
+                types = (<UnionOrIntersectionType> type).types;
+            } else if (type.flags & TypeFlags.Object) {
+                const properties = getPropertiesOfObjectType(type);
+                types = properties.map(getTypeOfSymbol);
+
+
+                const callSignatures = getSignaturesOfType(type, SignatureKind.Call);
+                const constructSignatures = getSignaturesOfType(type, SignatureKind.Construct);
+
+                signatures = callSignatures.concat(constructSignatures);
+            }
+
+            if (types || signatures) {
+                const map = createMap<TypeVariable>();
+                ctx.tyVarCache.set(tid, map);
+
+                forEach(signatures, sign => {
+                    markPolyVars(ctx, sign);
+                    forEach(sign.typeParameters, p => {
+                        map.set(String(p.id), p);
+                    });
+
+                    if (sign.resolvedReturnType) {
+                        types.push(sign.resolvedReturnType);
+                    }
+
+                    forEach(sign.parameters, symb => {
+                        types.push(getTypeOfSymbol(symb));
+                    });
+                });
+
+                forEach(types, t => {
+                    const vars = collectTypeVariables(t, ctx);
+                    mapMerge(map, vars);
+                });
+
+                if (map.size) {
+                    return map;
+                }
+            }
+
+            ctx.tyVarCache.set(tid, emptyTyVars);
+            return emptyTyVars;
+        }
+
         // Return true if the given type could possibly reference a type parameter for which
         // we perform type inference (i.e. a type parameter of a generic function). We cache
         // results for union and intersection types for performance reasons.
@@ -14970,23 +15054,28 @@ namespace ts {
         }
 
         type InfCtx = {
-            polyVars: Map<Type>,
+            polyVars: Map<TypeVariable>,
             typeParams: Map<TypeParamInfo>,
             constraints: [Type, Type][]
             deferredConstraints: [Type, Type][],
 
             symbolStack: Symbol[],
-            visited: Map<boolean>
+            visited: Map<boolean>,
+            tyVarCache: Map<Map<TypeVariable>>,
+            typeMapper: TypeMapper
         }
 
         type Heya = {
             types: Type[],
             firstMet?: TypeVariable,
-            bounds: Type[]
+            bounds: Type[],
+            complicated?: Type[]
         }
 
+        type InfState = Map<Heya>
+
         function mkInferenceContext(signature: Signature): InfCtx {
-            const polyVars = ts.createMap<Type>();
+            const polyVars = ts.createMap<TypeVariable>();
             const typeParams = ts.createMap<TypeParamInfo>();
 
             for (const p of signature.typeParameters) {
@@ -15001,7 +15090,9 @@ namespace ts {
                 deferredConstraints: [],
 
                 symbolStack: [],
-                visited: createMap<boolean>()
+                visited: createMap<boolean>(),
+                tyVarCache: createMap<Map<TypeVariable>>(),
+                typeMapper: undefined
             };
         }
 
@@ -15013,13 +15104,13 @@ namespace ts {
             }
         }
 
-        function inferTypeArguments2(
+        function inferCall(
             node: CallLikeExpression,
             signature: Signature,
             args: Expression[],
             excludes: boolean[],
             inferenceContext: InferenceContext
-        ): void {
+        ): Type[] {
             const ctx = mkInferenceContext(signature);
 
             const thisType = getThisTypeOfSignature(signature);
@@ -15050,7 +15141,44 @@ namespace ts {
                 }
             }
 
-            const st = solve(ctx);
+            const st = createMap<Heya>();
+            ctx.typeMapper = createInfMapper(st, ctx);
+            let solveRes: 'success'|'ambiguous'|'reduce_fail' = solve(st, ctx);
+
+            if (solveRes === 'success' && excludes) {
+                for (let i = 0; i < argCount; i++) {
+                    // No need to check for omitted args and template expressions, their exclusion value is always undefined
+                    if (excludes[i] === false) {
+                        const arg = args[i];
+                        const paramType = getTypeAtPosition(signature, i);
+                        uniTypes(ctx, checkExpressionWithContextualType(arg, paramType, ctx.typeMapper), paramType);
+                    }
+                }
+
+                solveRes = solve(st, ctx);
+            }
+
+            if (solveRes === 'ambiguous') {
+                inferenceContext.failedTypeParameterIndex = 0;
+                signature.typeParameters.forEach((_, i) => {
+                    inferenceContext.inferences[i].candidates = [];
+                });
+                return signature.typeParameters.map(_ => unknownType);
+            }
+
+            signature.typeParameters.forEach((p, i) => {
+                const h = st.get(String(p.id));
+                inferenceContext.inferences[i].candidates = h.types.length && h.types ||
+                                                            h.bounds.length && h.bounds ||
+                                                            h.firstMet && [ h.firstMet] ||
+                                                            [];
+            });
+
+            false && showState(st, ctx);
+            return getInferredTypes(inferenceContext);
+        }
+
+        function showState(st: InfState, ctx: InfCtx) {
             const arr: {
                 tyVars: string[],
                 uni: {
@@ -15064,16 +15192,6 @@ namespace ts {
             const getId = (x: any) => {
                 return x.id !== undefined ? x.id : (x.id = counter++);
             };
-
-            signature.typeParameters.forEach(
-                (t, i) => {
-                    const h = st.get(String(t.id));
-                    inferenceContext.inferences[i].primary = h ? h.types.length && h.types ||
-                                                                 h.bounds.length && h.bounds ||
-                                                                 [h.firstMet]
-                                                               : [];
-                }
-            );
 
             st.forEach((v, k) => {
                 const id = getId(v);
@@ -15091,10 +15209,41 @@ namespace ts {
                 arr[id].tyVars.push(typeToString(ctx.polyVars.get(k)));
             });
 
-            getInferredTypes(inferenceContext);
+            return arr;
         }
 
-        function addBounds(tv: TypeVariable, hy: Heya, ctx: InfCtx) {
+        function createInfMapper(st: InfState, ctx: InfCtx) {
+            const mappedTypes: TypeVariable[] = [];
+            ctx.polyVars.forEach(v => mappedTypes.push(v));
+
+            const mapper: TypeMapper = (t: Type) => {
+                const h = st.get(String(t.id));
+                if (h) {
+                    if (h.types.length === 0) {
+                        if (!h.firstMet) {
+                            debugger;
+                            return silentNeverType;
+                        }
+
+                        return h.firstMet;
+                    }
+
+                    if (h.types.length === 1) {
+                        return h.types[0];
+                    }
+
+                    Debug.fail('Types not reduced');
+                }
+
+                return t;
+            };
+
+            mapper.mappedTypes = mappedTypes;
+
+            return mapper;
+        }
+
+        function addBounds(tv: TypeVariable, h: Heya, ctx: InfCtx) {
             // type parameter constraints are checked anyway
             // if (ctx.typeParams.get(String(tv.id))) {
             //     return;
@@ -15105,11 +15254,11 @@ namespace ts {
                 : undefined;
 
             if (constr) {
-                hy.bounds.push(constr);
+                h.bounds.push(constr);
             }
         }
 
-        function bind(tv: TypeVariable, t: Type, ctx: InfCtx, st: Map<Heya>) {
+        function bind(tv: TypeVariable, t: Type, ctx: InfCtx, st: InfState) {
             const isPolyVar = (t.flags & TypeFlags.TypeVariable)
                 && ctx.polyVars.has(String(t.id));
             const ts = st.get(String(t.id));
@@ -15127,7 +15276,13 @@ namespace ts {
                 }
 
                 if (!isPolyVar) {
-                    tvs.types.push(t);
+                    const vars = collectTypeVariables(t, ctx);
+
+                    if (vars.size) {
+                        (tvs.complicated = tvs.complicated || []).push(t);
+                    } else {
+                        tvs.types.push(t);
+                    }
                 } else {
                     if (!tvs.firstMet) {
                         tvs.firstMet = <TypeVariable> t;
@@ -15147,10 +15302,18 @@ namespace ts {
                 return;
             }
 
+            // already the same
+            if (ts === tvs) {
+                return;
+            }
+
             // both have unifications - merge
             tvs.types.push.apply(tvs.types, ts.types);
             tvs.bounds.push.apply(tvs.bounds, ts.bounds);
             tvs.firstMet = tvs.firstMet || ts.firstMet;
+            tvs.complicated = (tvs.complicated || ts.complicated)
+                ? [].concat(tvs.complicated || [], ts.complicated || [])
+                : undefined;
 
             // update all ts to be tvs
             st.forEach((v, k) => {
@@ -15160,9 +15323,23 @@ namespace ts {
             });
         }
 
-        function solve(ctx: InfCtx) {
-            const st = createMap<Heya>();
+        function solve(st: InfState, ctx: InfCtx) {
+            do {
+                unifyTyVars(st, ctx);
+                if (!unifySimple(st)) {
+                    return 'reduce_fail';
+                }
+            } while (promote(st, ctx));
 
+            // unsolvable constraints :/
+            if (ctx.deferredConstraints.length) {
+                return 'ambiguous';
+            }
+
+            return 'success';
+        }
+
+        function unifyTyVars(st: InfState, ctx: InfCtx) {
             for (const [t1, t2] of ctx.constraints) {
                 if (t1.flags & TypeFlags.TypeVariable && ctx.polyVars.get(String(t1.id))) {
                     bind(<TypeVariable> t1, t2, ctx, st);
@@ -15172,14 +15349,71 @@ namespace ts {
                     bind(<TypeVariable> t2, t1, ctx, st);
                     continue;
                 }
+
                 throw new Error('HOW????');
             }
+        }
 
-            return st;
+        function unifySimple(st: InfState): boolean {
+            let result = true;
+
+            st.forEach(h => {
+                if (h.types.length) {
+                    // TODO: widening
+                    // const baseCandidates = sameMap(h.types, getWidenedLiteralType);
+                    const reduced =  getCommonSupertype(h.types);
+
+                    if (!reduced) {
+                        result = false;
+                    }
+                    else {
+                        h.types = [ reduced ];
+                    }
+                }
+            });
+
+            return result;
+        }
+
+        function promote(st: InfState, ctx: InfCtx): boolean {
+            let anyPromoted = false;
+
+            ctx.constraints = [];
+            st.forEach(h => {
+                if (!h.complicated) {
+                    return;
+                }
+
+                const last = h.complicated.reduce((acc, t) => {
+                    uniTypes(ctx, acc, t);
+                    return t;
+                });
+
+                anyPromoted = true;
+                h.complicated = undefined;
+                h.types.push(last);
+            });
+
+            if (anyPromoted) {
+                return true;
+            }
+
+            // try to solve any of the deferreds
+            if (ctx.deferredConstraints.length) {
+                debugger;
+            }
+            // ctx.deferredConstraints = ctx.deferredConstraints.filter(dc => {
+            //     dc
+            // });
+
+            return anyPromoted;
         }
 
         function uniTypes(ctx: InfCtx, source: Type, target: Type) {
-            if (!couldContainTypeVariables(target) && !couldContainTypeVariables(source)) {
+            const srcVars = collectTypeVariables(source, ctx);
+            const tgtVars = collectTypeVariables(target, ctx);
+
+            if (!srcVars.size && !tgtVars.size) {
                 return;
             }
             if (source === target) {
@@ -15371,9 +15605,6 @@ namespace ts {
         }
 
         function uniSignature(ctx: InfCtx, source: Signature, target: Signature) {
-            markPolyVars(ctx, source);
-            markPolyVars(ctx, target);
-
             forEachMatchingParameterType(source, target, (src, tgt) => {
                 uniTypes(ctx, src, tgt)
             });
@@ -16116,6 +16347,8 @@ namespace ts {
                     const inferenceContext = originalCandidate.typeParameters ?
                         createInferenceContext(originalCandidate, /*flags*/ isInJavaScriptFile(node) ? InferenceFlags.AnyDefault : 0) :
                         undefined;
+                    const infTypeArguments = inferCall;
+                    // const infTypeArguments = inferTypeArguments;
 
                     while (true) {
                         candidate = originalCandidate;
@@ -16129,7 +16362,7 @@ namespace ts {
                                 }
                             }
                             else {
-                                typeArgumentTypes = inferTypeArguments(node, candidate, args, excludeArgument, inferenceContext);
+                                typeArgumentTypes = infTypeArguments(node, candidate, args, excludeArgument, inferenceContext);
                             }
                             candidate = getSignatureInstantiation(candidate, typeArgumentTypes);
                         }
@@ -16138,7 +16371,7 @@ namespace ts {
                             break;
                         }
                         const index = excludeArgument ? indexOf(excludeArgument, /*value*/ true) : -1;
-                        if (index < 0) {
+                        if (index < 0 || infTypeArguments === inferCall) {
                             return candidate;
                         }
                         excludeArgument[index] = false;
