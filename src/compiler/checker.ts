@@ -15067,9 +15067,11 @@ namespace ts {
 
         type Heya = {
             types: Type[],
+            tyVars: TypeVariable[],
             firstMet?: TypeVariable,
             bounds: Type[],
-            complicated?: Type[]
+            complicated?: Type[],
+            reduced?: boolean
         }
 
         type InfState = Map<Heya>
@@ -15148,7 +15150,7 @@ namespace ts {
             if (solveRes === 'success' && excludes) {
                 for (let i = 0; i < argCount; i++) {
                     // No need to check for omitted args and template expressions, their exclusion value is always undefined
-                    if (excludes[i] === false) {
+                    if (excludes[i]) {
                         const arg = args[i];
                         const paramType = getTypeAtPosition(signature, i);
                         uniTypes(ctx, checkExpressionWithContextualType(arg, paramType, ctx.typeMapper), paramType);
@@ -15168,10 +15170,11 @@ namespace ts {
 
             signature.typeParameters.forEach((p, i) => {
                 const h = st.get(String(p.id));
-                inferenceContext.inferences[i].candidates = h.types.length && h.types ||
-                                                            h.bounds.length && h.bounds ||
-                                                            h.firstMet && [ h.firstMet] ||
-                                                            [];
+                inferenceContext.inferences[i].candidates = h && (
+                                                                h.types.length && h.types ||
+                                                                h.bounds.length && h.bounds ||
+                                                                h.firstMet && [ h.firstMet]
+                                                            ) || [];
             });
 
             false && showState(st, ctx);
@@ -15220,12 +15223,7 @@ namespace ts {
                 const h = st.get(String(t.id));
                 if (h) {
                     if (h.types.length === 0) {
-                        if (!h.firstMet) {
-                            debugger;
-                            return silentNeverType;
-                        }
-
-                        return h.firstMet;
+                        return h.firstMet || t;
                     }
 
                     if (h.types.length === 1) {
@@ -15239,6 +15237,7 @@ namespace ts {
             };
 
             mapper.mappedTypes = mappedTypes;
+            mapper.isUnifcationMapper = true;
 
             return mapper;
         }
@@ -15269,13 +15268,22 @@ namespace ts {
                 if (!tvs) {
                     tvs  = {
                         types: [],
-                        bounds: []
+                        bounds: [],
+                        tyVars: [tv]
                     };
 
                     addBounds(tv, tvs, ctx);
                 }
 
-                if (!isPolyVar) {
+                if (isPolyVar) {
+                    if (!tvs.firstMet) {
+                        tvs.firstMet = <TypeVariable> t;
+                    }
+
+                    tvs.tyVars.push(<TypeVariable> t);
+                    addBounds(<TypeVariable> t, tvs, ctx);
+                    st.set(String(t.id), tvs);
+                } else {
                     const vars = collectTypeVariables(t, ctx);
 
                     if (vars.size) {
@@ -15283,12 +15291,6 @@ namespace ts {
                     } else {
                         tvs.types.push(t);
                     }
-                } else {
-                    if (!tvs.firstMet) {
-                        tvs.firstMet = <TypeVariable> t;
-                    }
-                    addBounds(<TypeVariable> t, tvs, ctx);
-                    st.set(String(t.id), tvs);
                 }
 
                 st.set(String(tv.id), tvs);
@@ -15309,6 +15311,7 @@ namespace ts {
 
             // both have unifications - merge
             tvs.types.push.apply(tvs.types, ts.types);
+            tvs.tyVars.push.apply(tvs.tyVars, ts.tyVars);
             tvs.bounds.push.apply(tvs.bounds, ts.bounds);
             tvs.firstMet = tvs.firstMet || ts.firstMet;
             tvs.complicated = (tvs.complicated || ts.complicated)
@@ -15329,7 +15332,7 @@ namespace ts {
                 if (promoteComplicated(st, ctx)) {
                     continue;
                 }
-                if (!unifySimple(st)) {
+                if (unifySimple(st, ctx)) {
                     return 'reduce_fail';
                 }
                 if (!promoteDeferred(st, ctx)) {
@@ -15360,25 +15363,69 @@ namespace ts {
             }
         }
 
-        function unifySimple(st: InfState): boolean {
-            let result = true;
+        function unifySimple(st: InfState, ctx: InfCtx): boolean {
+            let hasError = false;
 
+            st.forEach(h => h.reduced = false);
             st.forEach(h => {
-                if (h.types.length) {
-                    // TODO: widening
-                    // const baseCandidates = sameMap(h.types, getWidenedLiteralType);
-                    const reduced =  getCommonSupertype(h.types);
-
-                    if (!reduced) {
-                        result = false;
-                    }
-                    else {
-                        h.types = [ reduced ];
-                    }
-                }
+                Debug.assert(!h.complicated, 'Non-promoted compount constraints found');
+                hasError = hasError || unifySimpleHelper(h, [], st, ctx);
             });
 
-            return result;
+            return hasError;
+        }
+
+        function unifySimpleHelper(h: Heya, seen: TypeVariable[], st: InfState, ctx: InfCtx): boolean {
+            if (!h || h.reduced) {
+                if (!h) debugger;
+                return false;
+            }
+            if (!h.types.length) {
+                h.reduced = true;
+                return false;
+            }
+            for (const v of h.tyVars) {
+                if (indexOf(seen, v) !== -1) {
+                    // we found a circularity
+                    return true;
+                }
+                seen.push(v);
+            }
+            for (const t of h.types) {
+                const vars = collectTypeVariables(t, ctx);
+                if (!vars.size) {
+                    continue;
+                }
+
+                let hasCircularities = false;
+                vars.forEach(v => {
+                    const h = st.get(String(v.id));
+                    hasCircularities = hasCircularities || unifySimpleHelper(h, seen, st, ctx);
+                });
+
+                if (hasCircularities) {
+                    return true;
+                }
+            }
+
+            // TODO: widening
+            // const baseCandidates = sameMap(h.types, getWidenedLiteralType);
+            const instantiated = instantiateList(h.types, ctx.typeMapper, instantiateType);
+            const reduced =  getCommonSupertype(instantiated);
+
+            if (!reduced) {
+                return true;
+            }
+
+            h.reduced = true;
+            h.types = [ reduced ];
+
+            // pop out our type variables from seen
+            for (let i = 0; i < h.tyVars.length; ++i) {
+                seen.pop();
+            }
+
+            return false;
         }
 
         function promoteComplicated(st: InfState, ctx: InfCtx): boolean {
@@ -15405,16 +15452,18 @@ namespace ts {
         }
 
         function promoteDeferred(st: InfState, ctx: InfCtx): boolean {
-            // try to solve any of the deferreds
-            if (!ctx.deferredConstraints.length) {
-                return false;
-            }
-            // ctx.deferredConstraints = ctx.deferredConstraints.filter(dc => {
-            //     dc
-            // });
+            let anyPromoted = false;
 
-            debugger;
-            return true;
+            ctx.deferredConstraints = filter(ctx.deferredConstraints, c => {
+                const source = instantiateType(c[0], ctx.typeMapper);
+                const target = instantiateType(c[1], ctx.typeMapper);
+
+                debugger;
+
+                return false;
+            });
+
+            return anyPromoted;
         }
 
         function uniTypes(ctx: InfCtx, source: Type, target: Type) {
