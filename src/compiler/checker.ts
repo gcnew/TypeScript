@@ -8216,7 +8216,7 @@ namespace ts {
             return false;
         }
 
-        function instantiateType(type: Type, mapper: TypeMapper): Type {
+        function instantiateType(type: Type, mapper: TypeMapper, force?: boolean): Type {
             if (type && mapper !== identityMapper) {
                 // If we are instantiating a type that has a top-level type alias, obtain the instantiation through
                 // the type alias instead in order to share instantiations for the same type arguments. This can
@@ -8241,12 +8241,12 @@ namespace ts {
                     }
                     return type;
                 }
-                return instantiateTypeNoAlias(type, mapper);
+                return instantiateTypeNoAlias(type, mapper, force);
             }
             return type;
         }
 
-        function instantiateTypeNoAlias(type: Type, mapper: TypeMapper): Type {
+        function instantiateTypeNoAlias(type: Type, mapper: TypeMapper, force?: boolean): Type {
             if (type.flags & TypeFlags.TypeParameter) {
                 return mapper(<TypeParameter>type);
             }
@@ -8260,7 +8260,7 @@ namespace ts {
                     // instantiation.
                     return type.symbol &&
                         type.symbol.flags & (SymbolFlags.Function | SymbolFlags.Method | SymbolFlags.Class | SymbolFlags.TypeLiteral | SymbolFlags.ObjectLiteral) &&
-                        ((<ObjectType>type).objectFlags & ObjectFlags.Instantiated || isSymbolInScopeOfMappedTypeParameter(type.symbol, mapper)) ?
+                        ((<ObjectType>type).objectFlags & ObjectFlags.Instantiated || force || isSymbolInScopeOfMappedTypeParameter(type.symbol, mapper)) ?
                         instantiateCached(type, mapper, instantiateAnonymousType) : type;
                 }
                 if ((<ObjectType>type).objectFlags & ObjectFlags.Mapped) {
@@ -15139,7 +15139,7 @@ namespace ts {
                         argType = checkExpressionWithContextualType(arg, paramType, undefined);
                     }
 
-                    uniTypes(ctx, argType, paramType);
+                    uniTypes(ctx, excludes && excludes[i] ? argType : instantiateArgument(argType, ctx), paramType);
                 }
             }
 
@@ -15172,9 +15172,9 @@ namespace ts {
                 const h = st.get(String(p.id));
                 inferenceContext.inferences[i].candidates = h && (
                                                                 h.types.length && h.types ||
-                                                                h.bounds.length && h.bounds ||
+                                                                // h.bounds.length && h.bounds ||
                                                                 h.firstMet && [ h.firstMet]
-                                                            ) || [];
+                                                            ) || [p];
             });
 
             false && showState(st, ctx);
@@ -15213,6 +15213,29 @@ namespace ts {
             });
 
             return arr;
+        }
+
+        function instantiateArgument(type: Type, ctx: InfCtx) {
+            const tyVars = collectTypeVariables(type, ctx);
+            if (!tyVars.size) {
+                return type;
+            }
+
+            const tyParams: TypeParameter[] = [];
+            tyVars.forEach(v => {
+                if (v.flags & TypeFlags.TypeParameter) {
+                    tyParams.push(<TypeParameter> v);
+                }
+            });
+
+            if (!tyParams.length) {
+                return type;
+            }
+
+            const freshTypeParameters = map(tyParams, cloneTypeParameter);
+            const mapper = createTypeMapper(tyParams, freshTypeParameters);
+
+            return instantiateType(type, mapper, true);
         }
 
         function createInfMapper(st: InfState, ctx: InfCtx) {
