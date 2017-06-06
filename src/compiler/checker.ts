@@ -8067,9 +8067,11 @@ namespace ts {
                 callSignature.typeParameters = typeParams;
 
                 // big cheat
-                (<AnonymousType> returnType).objectFlags -= ObjectFlags.Instantiated;
-                (<AnonymousType> returnType).mapper = undefined;
-                (<AnonymousType> returnType).target = undefined;
+                if ((<AnonymousType> returnType).objectFlags & ObjectFlags.Instantiated) {
+                    (<AnonymousType> returnType).objectFlags -= ObjectFlags.Instantiated;
+                    (<AnonymousType> returnType).mapper = undefined;
+                    (<AnonymousType> returnType).target = undefined;
+                }
             }
             const result = createSignature(signature.declaration, freshTypeParameters,
                 signature.thisParameter && instantiateSymbol(signature.thisParameter, mapper),
@@ -15141,7 +15143,7 @@ namespace ts {
                         // For context sensitive arguments we pass the identityMapper, which is a signal to treat all
                         // context sensitive function expressions as wildcards
                         // const mapper = excludeArgument && excludeArgument[i] !== undefined ? identityMapper : inferenceMapper;
-                        argType = checkExpressionWithContextualType(arg, paramType, undefined);
+                        argType = checkExpressionWithContextualType(arg, paramType, identityMapper);
                     }
 
                     uniTypes(ctx, excludes && excludes[i] ? argType : instantiateArgument(argType, ctx), paramType);
@@ -15158,8 +15160,7 @@ namespace ts {
                     if (excludes[i]) {
                         const arg = args[i];
                         const paramType = getTypeAtPosition(signature, i);
-                        checkExpressionWithContextualType(arg, paramType, ctx.typeMapper);
-                        // uniTypes(ctx, , paramType);
+                        uniTypes(ctx, checkExpressionWithContextualType(arg, paramType, ctx.typeMapper), paramType);
                     }
                 }
 
@@ -15229,7 +15230,7 @@ namespace ts {
 
             const tyParams: TypeParameter[] = [];
             tyVars.forEach(v => {
-                if (v.flags & TypeFlags.TypeParameter) {
+                if (v.flags & TypeFlags.TypeParameter && !ctx.typeParams.has(String(v.id))) {
                     tyParams.push(<TypeParameter> v);
                 }
             });
