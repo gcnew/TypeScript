@@ -8065,6 +8065,11 @@ namespace ts {
                 const typeParams = <TypeParameter[]>filter(paramTypes, type => !!(type.flags & TypeFlags.TypeParameter));
                 Debug.assert(!!typeParams.length);
                 callSignature.typeParameters = typeParams;
+
+                // big cheat
+                (<AnonymousType> returnType).objectFlags -= ObjectFlags.Instantiated;
+                (<AnonymousType> returnType).mapper = undefined;
+                (<AnonymousType> returnType).target = undefined;
             }
             const result = createSignature(signature.declaration, freshTypeParameters,
                 signature.thisParameter && instantiateSymbol(signature.thisParameter, mapper),
@@ -15153,7 +15158,8 @@ namespace ts {
                     if (excludes[i]) {
                         const arg = args[i];
                         const paramType = getTypeAtPosition(signature, i);
-                        uniTypes(ctx, checkExpressionWithContextualType(arg, paramType, ctx.typeMapper), paramType);
+                        checkExpressionWithContextualType(arg, paramType, ctx.typeMapper);
+                        // uniTypes(ctx, , paramType);
                     }
                 }
 
@@ -15260,7 +15266,7 @@ namespace ts {
             };
 
             mapper.mappedTypes = mappedTypes;
-            mapper.isUnifcationMapper = true;
+            mapper.unificationContext = ctx;
 
             return mapper;
         }
