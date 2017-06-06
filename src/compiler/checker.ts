@@ -15357,7 +15357,8 @@ namespace ts {
         }
 
         function solve(st: InfState, ctx: InfCtx) {
-            while (true) {
+            let cutOff = 25;
+            for (; cutOff > 0; --cutOff) {
                 unifyTyVars(st, ctx);
                 if (promoteComplicated(st, ctx)) {
                     continue;
@@ -15369,6 +15370,8 @@ namespace ts {
                     break;
                 }
             }
+
+            Debug.assert(cutOff !== 0, 'Infinite unification encountered');
 
             // unsolvable constraints :/
             if (ctx.deferredConstraints.length) {
