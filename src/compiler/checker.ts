@@ -6527,6 +6527,24 @@ namespace ts {
                 else {
                     type = getReturnTypeFromBody(<FunctionLikeDeclaration>signature.declaration);
                 }
+                if (signature.typeParameters) {
+                    const singleCallSignature = getSingleCallSignature(type);
+                    if (singleCallSignature) {
+                        const ctx = mkInferenceContext(signature);
+                        const survivours = collectSurvivours(signature, ctx);
+                        const tyParams: TypeParameter[] = [];
+
+                        survivours.forEach(p => {
+                            if (p.flags & TypeFlags.TypeParameter) {
+                                tyParams.push(<TypeParameter>p);
+                            }
+                        });
+
+                        if (tyParams.length) {
+                            singleCallSignature.typeParameters = tyParams;
+                        }
+                    }
+                }
                 if (!popTypeResolution()) {
                     type = anyType;
                     if (noImplicitAny) {
@@ -8054,29 +8072,10 @@ namespace ts {
             if (signature.typePredicate) {
                 freshTypePredicate = cloneTypePredicate(signature.typePredicate, mapper);
             }
-            const returnType = instantiateType(signature.resolvedReturnType, mapper);
-            const callSignature = returnType && getSingleCallSignature(returnType);
-            if  (callSignature && !callSignature.typeParameters && hasFreeTypeVars(callSignature)) {
-                // this is an inferred signature
-                const paramTypes = map(callSignature.parameters, getTypeOfSymbol);
-                if (!contains(paramTypes, callSignature.resolvedReturnType)) {
-                    paramTypes.push(callSignature.resolvedReturnType);
-                }
-                const typeParams = <TypeParameter[]>filter(paramTypes, type => !!(type.flags & TypeFlags.TypeParameter));
-                Debug.assert(!!typeParams.length);
-                callSignature.typeParameters = typeParams;
-
-                // big cheat
-                if ((<AnonymousType> returnType).objectFlags & ObjectFlags.Instantiated) {
-                    (<AnonymousType> returnType).objectFlags -= ObjectFlags.Instantiated;
-                    (<AnonymousType> returnType).mapper = undefined;
-                    (<AnonymousType> returnType).target = undefined;
-                }
-            }
             const result = createSignature(signature.declaration, freshTypeParameters,
                 signature.thisParameter && instantiateSymbol(signature.thisParameter, mapper),
                 instantiateList(signature.parameters, mapper, instantiateSymbol),
-                returnType,
+                /*resolvedReturnType*/ undefined,
                 freshTypePredicate,
                 signature.minArgumentCount, signature.hasRestParameter, signature.hasLiteralTypes);
             result.target = signature;
@@ -10318,6 +10317,7 @@ namespace ts {
                         types.push(sign.resolvedReturnType);
                     }
 
+                    // TODO: this and rest
                     forEach(sign.parameters, symb => {
                         types.push(getTypeOfSymbol(symb));
                     });
@@ -15175,17 +15175,48 @@ namespace ts {
                 return signature.typeParameters.map(_ => unknownType);
             }
 
+            let survivours: Map<Type>;
             signature.typeParameters.forEach((p, i) => {
                 const h = st.get(String(p.id));
-                inferenceContext.inferences[i].candidates = h && (
-                                                                h.types.length && h.types ||
-                                                                // h.bounds.length && h.bounds ||
-                                                                h.firstMet && [ h.firstMet]
-                                                            ) || [p];
+                let candidates: Type[];
+
+                if (h) {
+                    candidates = h.types.length && h.types ||
+                                 // h.bounds.length && h.bounds ||
+                                 h.firstMet && [ h.firstMet];
+                }
+
+                if (!candidates) {
+                    if (!survivours) {
+                        survivours = collectSurvivours(signature, ctx);
+                    }
+
+                    candidates = survivours.has(String(p.id)) ? [p] : undefined;
+                }
+
+                inferenceContext.inferences[i].candidates = candidates;
             });
 
             false && showState(st, ctx);
             return getInferredTypes(inferenceContext);
+        }
+
+        function collectSurvivours(signature: Signature, ctx: InfCtx) {
+            const types: Type[] = [];
+
+             while (true) {
+                const type = getReturnTypeOfSignature(signature);
+                signature = getSingleCallSignature(type);
+
+                if (!signature) {
+                    return collectTypeVariables(getUnionType(types), ctx);
+                }
+
+                // TODO: this and rest
+                forEach(signature.parameters, symb => {
+                    types.push(getTypeOfSymbol(symb));
+                });
+            }
         }
 
         function showState(st: InfState, ctx: InfCtx) {
@@ -18400,16 +18431,6 @@ namespace ts {
             }
 
             return type;
-        }
-
-        function isPolymorphicSignature(signature: Signature | undefined) {
-            return signature && (signature.typeParameters || hasFreeTypeVars(signature));
-        }
-
-        function hasFreeTypeVars(signature: Signature) {
-            false && isPolymorphicSignature;
-            return signature.resolvedReturnType && signature.resolvedReturnType.flags & TypeFlags.TypeParameter
-                   || forEach(signature.parameters, (symb) => getTypeOfSymbol(symb).flags & TypeFlags.TypeParameter);
         }
 
         /**
