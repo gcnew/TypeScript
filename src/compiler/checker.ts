@@ -15160,11 +15160,24 @@ namespace ts {
             let survivours = collectSurvivours(signature, ctx);
             signature.typeParameters.forEach((p, i) => {
                 const h = st.get(String(p.id));
-                inferenceContext.inferences[i].candidates = h
-                    && (h.types.length && h.types ||
-                        // h.bounds.length && h.bounds ||
-                        h.firstMet && [ h.firstMet])
-                    || (survivours.has(String(p.id)) ? [p] : undefined);
+                let candidates: Type[];
+
+                if (h) {
+                    if (h.types.length) {
+                        candidates = h.types;
+                    }
+                    else if (h.firstMet && some(h.tyVars, t => survivours.has(String(t.id)))) {
+                        candidates = [ h.firstMet ];
+                    }
+                    else {
+                        candidates = undefined;
+                    }
+                }
+                else {
+                    candidates = survivours.has(String(p.id)) ? [p] : undefined;
+                }
+
+                inferenceContext.inferences[i].candidates = candidates;
             });
 
             false && showState(st, ctx);
