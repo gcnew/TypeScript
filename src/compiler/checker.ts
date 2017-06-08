@@ -10278,7 +10278,6 @@ namespace ts {
                 const properties = getPropertiesOfObjectType(type);
                 types = properties.map(getTypeOfSymbol);
 
-
                 const callSignatures = getSignaturesOfType(type, SignatureKind.Call);
                 const constructSignatures = getSignaturesOfType(type, SignatureKind.Construct);
 
@@ -10295,14 +10294,12 @@ namespace ts {
                         map.set(String(p.id), p);
                     });
 
-                    if (sign.resolvedReturnType) {
-                        types.push(sign.resolvedReturnType);
-                    }
-
                     // TODO: this and rest
                     forEach(sign.parameters, symb => {
                         types.push(getTypeOfSymbol(symb));
                     });
+
+                    types.push(getReturnTypeOfSignature(sign));
                 });
 
                 forEach(types, t => {
@@ -15097,11 +15094,17 @@ namespace ts {
 
         function inferCall(
             node: CallLikeExpression,
-            signature: Signature,
+            originalSignature: Signature,
             args: Expression[],
             excludes: boolean[],
             inferenceContext: InferenceContext
         ): Type[] {
+            // instantiate a new copy of the signature. We do it locally, because creating
+            // a new signature reference breaks the other services such as inteli-sense.
+            // Care must be taken, because inferenceContext.signature = originalSignature
+            // are different from this newly instantiated signature. The trick we are doing
+            // here is OK as we copy the inferred parameters onto the context later on.
+            const signature = instantiateSignature(originalSignature, identityMapper, false);
             const ctx = mkInferenceContext(signature);
 
             const thisType = getThisTypeOfSignature(signature);
@@ -15124,7 +15127,6 @@ namespace ts {
                     if (argType === undefined) {
                         // For context sensitive arguments we pass the identityMapper, which is a signal to treat all
                         // context sensitive function expressions as wildcards
-                        // const mapper = excludeArgument && excludeArgument[i] !== undefined ? identityMapper : inferenceMapper;
                         argType = checkExpressionWithContextualType(arg, paramType, identityMapper);
                     }
 
@@ -15158,6 +15160,7 @@ namespace ts {
             }
 
             let survivours = collectSurvivours(signature, ctx);
+            let allRetVars = collectTypeVariables(getReturnTypeOfSignature(signature), ctx);
             signature.typeParameters.forEach((p, i) => {
                 const h = st.get(String(p.id));
                 let candidates: Type[];
@@ -15166,7 +15169,12 @@ namespace ts {
                     if (h.types.length) {
                         candidates = h.types;
                     }
-                    else if (h.firstMet && some(h.tyVars, t => survivours.has(String(t.id)))) {
+                    else if (h.firstMet && (
+                        // either the type param is not referred to in the result at all
+                        // or the returned function has it as a parameter
+                        some(h.tyVars, t => survivours.has(String(t.id))) ||
+                        every(h.tyVars, t => !allRetVars.has(String(t.id)))
+                    )) {
                         candidates = [ h.firstMet ];
                     }
                     else {
@@ -15184,9 +15192,11 @@ namespace ts {
             const retval = getInferredTypes(inferenceContext);
 
             if (survivours.size && inferenceContext.failedTypeParameterIndex === undefined) {
-                const instantiated = getSignatureInstantiation(signature, retval);
-                const retType = getReturnTypeOfSignature(instantiated);
-                const singleCallSignature = getSingleCallSignature(retType);
+                // NB! we use the original signature here for the cache to kick in
+                // and propagate the fixed return type
+                const instantiated = getSignatureInstantiation(originalSignature, retval);
+                const returnType = getReturnTypeOfSignature(instantiated);
+                const singleCallSignature = getSingleCallSignature(returnType);
 
                 if (singleCallSignature) {
                     const tyParams: TypeParameter[] = [];
@@ -15199,7 +15209,16 @@ namespace ts {
                         }
                     });
 
-                    singleCallSignature.typeParameters = tyParams.length ? tyParams : undefined;
+                    if (tyParams.length) {
+                        singleCallSignature.typeParameters = tyParams;
+
+                        // promote the return type to non-instantiated, otherwise the type variables
+                        // will get lost during subsequent instantiations
+                        Debug.assert(((<AnonymousType>returnType).objectFlags & ObjectFlags.Instantiated) !== 0);
+                        (<AnonymousType> returnType).objectFlags -= ObjectFlags.Instantiated;
+                        (<AnonymousType> returnType).mapper = undefined;
+                        (<AnonymousType> returnType).target = undefined;
+                    }
                 }
             }
 
@@ -15266,7 +15285,7 @@ namespace ts {
 
             const tyParams: TypeParameter[] = [];
             tyVars.forEach(v => {
-                if (v.flags & TypeFlags.TypeParameter && !ctx.typeParams.has(String(v.id))) {
+                if (v.flags & TypeFlags.TypeParameter) {
                     tyParams.push(<TypeParameter> v);
                 }
             });
