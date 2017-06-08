@@ -6527,24 +6527,6 @@ namespace ts {
                 else {
                     type = getReturnTypeFromBody(<FunctionLikeDeclaration>signature.declaration);
                 }
-                if (signature.typeParameters) {
-                    const singleCallSignature = getSingleCallSignature(type);
-                    if (singleCallSignature) {
-                        const ctx = mkInferenceContext(signature);
-                        const survivours = collectSurvivours(signature, ctx);
-                        const tyParams: TypeParameter[] = [];
-
-                        survivours.forEach(p => {
-                            if (p.flags & TypeFlags.TypeParameter) {
-                                tyParams.push(<TypeParameter>p);
-                            }
-                        });
-
-                        if (tyParams.length) {
-                            singleCallSignature.typeParameters = tyParams;
-                        }
-                    }
-                }
                 if (!popTypeResolution()) {
                     type = anyType;
                     if (noImplicitAny) {
@@ -15175,30 +15157,40 @@ namespace ts {
                 return signature.typeParameters.map(_ => unknownType);
             }
 
-            let survivours: Map<Type>;
+            let survivours = collectSurvivours(signature, ctx);
             signature.typeParameters.forEach((p, i) => {
                 const h = st.get(String(p.id));
-                let candidates: Type[];
-
-                if (h) {
-                    candidates = h.types.length && h.types ||
-                                 // h.bounds.length && h.bounds ||
-                                 h.firstMet && [ h.firstMet];
-                }
-
-                if (!candidates) {
-                    if (!survivours) {
-                        survivours = collectSurvivours(signature, ctx);
-                    }
-
-                    candidates = survivours.has(String(p.id)) ? [p] : undefined;
-                }
-
-                inferenceContext.inferences[i].candidates = candidates;
+                inferenceContext.inferences[i].candidates = h
+                    && (h.types.length && h.types ||
+                        // h.bounds.length && h.bounds ||
+                        h.firstMet && [ h.firstMet])
+                    || (survivours.has(String(p.id)) ? [p] : undefined);
             });
 
             false && showState(st, ctx);
-            return getInferredTypes(inferenceContext);
+            const retval = getInferredTypes(inferenceContext);
+
+            if (survivours.size && inferenceContext.failedTypeParameterIndex === undefined) {
+                const instantiated = getSignatureInstantiation(signature, retval);
+                const retType = getReturnTypeOfSignature(instantiated);
+                const singleCallSignature = getSingleCallSignature(retType);
+
+                if (singleCallSignature) {
+                    const tyParams: TypeParameter[] = [];
+                    survivours.forEach(p => {
+                        if (p.flags & TypeFlags.TypeParameter) {
+                            const mapped = instantiateType(p, ctx.typeMapper);
+                            if (ctx.polyVars.has(String(mapped.id))) {
+                                tyParams.push(<TypeParameter> mapped);
+                            }
+                        }
+                    });
+
+                    singleCallSignature.typeParameters = tyParams.length ? tyParams : undefined;
+                }
+            }
+
+            return retval;
         }
 
         function collectSurvivours(signature: Signature, ctx: InfCtx) {
