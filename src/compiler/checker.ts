@@ -15024,13 +15024,13 @@ namespace ts {
 
         // Instantiate a generic signature in the context of a non-generic signature (section 3.8.5 in TypeScript spec)
         function instantiateSignatureInContextOf(signature: Signature, contextualSignature: Signature, contextualMapper?: TypeMapper): Signature {
-            const context = createInferenceContext(signature, InferenceFlags.InferUnionTypes);
+            const context = createInferenceContext(signature, 0);
             forEachMatchingParameterType(contextualSignature, signature, (source, target) => {
                 // Type parameters from outer context referenced by source type are fixed by instantiation of the source type
                 inferTypes(context.inferences, instantiateType(source, contextualMapper || identityMapper), target);
             });
             if (!contextualMapper) {
-                inferTypes(context.inferences, getReturnTypeOfSignature(contextualSignature), getReturnTypeOfSignature(signature), InferencePriority.ReturnType);
+                inferTypes(context.inferences, getReturnTypeOfSignature(contextualSignature), getReturnTypeOfSignature(signature));
             }
             return getSignatureInstantiation(signature, getInferredTypes(context));
         }
@@ -15227,7 +15227,7 @@ namespace ts {
         function collectSurvivours(signature: Signature, ctx: InfCtx) {
             const types: Type[] = [];
 
-             while (true) {
+            while (true) {
                 const type = getReturnTypeOfSignature(signature);
                 signature = getSingleCallSignature(type);
 
@@ -15553,15 +15553,16 @@ namespace ts {
         }
 
         function uniTypes(ctx: InfCtx, source: Type, target: Type) {
-            const srcVars = collectTypeVariables(source, ctx);
-            const tgtVars = collectTypeVariables(target, ctx);
-
-            if (!srcVars.size && !tgtVars.size) {
-                return;
-            }
             if (source === target) {
                 return;
             }
+
+            const srcVars = collectTypeVariables(source, ctx);
+            const tgtVars = collectTypeVariables(target, ctx);
+            if (!srcVars.size && !tgtVars.size) {
+                return;
+            }
+
             if (source.aliasSymbol && source.aliasTypeArguments && source.aliasSymbol === target.aliasSymbol) {
                 // Source and target are types originating in the same generic type alias declaration.
                 // Simply infer from source type arguments to target type arguments.
@@ -16490,7 +16491,7 @@ namespace ts {
                     const inferenceContext = originalCandidate.typeParameters ?
                         createInferenceContext(originalCandidate, /*flags*/ isInJavaScriptFile(node) ? InferenceFlags.AnyDefault : 0) :
                         undefined;
-                    const infTypeArguments = inferCall;
+                    const infTypeArguments = (originalCandidate.typeParameters && !typeArguments) ? inferCall : undefined;
                     // const infTypeArguments = inferTypeArguments;
 
                     while (true) {
