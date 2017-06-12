@@ -15152,7 +15152,6 @@ namespace ts {
             }
 
             if (solveRes === 'ambiguous') {
-                inferenceContext.failedTypeParameterIndex = 0;
                 signature.typeParameters.forEach((_, i) => {
                     inferenceContext.inferences[i].candidates = [];
                 });
@@ -15191,7 +15190,7 @@ namespace ts {
             false && showState(st, ctx);
             const retval = getInferredTypes(inferenceContext);
 
-            if (survivours.size && inferenceContext.failedTypeParameterIndex === undefined) {
+            if (survivours.size) {
                 // NB! we use the original signature here for the cache to kick in
                 // and propagate the fixed return type
                 const instantiated = getSignatureInstantiation(originalSignature, retval);
