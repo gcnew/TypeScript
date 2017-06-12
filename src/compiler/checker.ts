@@ -15321,7 +15321,6 @@ namespace ts {
             };
 
             mapper.mappedTypes = mappedTypes;
-            mapper.unificationContext = ctx;
 
             return mapper;
         }
