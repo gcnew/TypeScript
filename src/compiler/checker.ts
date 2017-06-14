@@ -10278,6 +10278,12 @@ namespace ts {
                 const properties = getPropertiesOfObjectType(type);
                 types = properties.map(getTypeOfSymbol);
 
+                const indexType = getIndexTypeOfType(type, IndexKind.String) ||
+                    getIndexTypeOfType(type, IndexKind.Number);
+                if (indexType) {
+                    types.push(indexType);
+                }
+
                 const callSignatures = getSignaturesOfType(type, SignatureKind.Call);
                 const constructSignatures = getSignaturesOfType(type, SignatureKind.Construct);
 
