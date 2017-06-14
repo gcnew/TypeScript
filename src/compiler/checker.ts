@@ -15063,7 +15063,8 @@ namespace ts {
             firstMet?: TypeVariable,
             bounds: Type[],
             complicated?: Type[],
-            reduced?: boolean
+            reduced?: boolean,
+            topLevel?: boolean
         }
 
         type InfState = Map<Heya>
@@ -15185,6 +15186,27 @@ namespace ts {
                     else {
                         candidates = undefined;
                     }
+
+                    if (h.topLevel === undefined) {
+                        h.topLevel = every(h.tyVars, v => {
+                            const vid = String(v.id);
+
+                            if (ctx.typeParams.has(vid)) {
+                                for (let i = 0; i < argCount; ++i) {
+                                    const paramType = getTypeAtPosition(signature, i);
+                                    const tyVars = collectTypeVariables(paramType, ctx);
+
+                                    if (tyVars.has(vid) && !isTypeParameterAtTopLevel(paramType, <TypeParameter> v)) {
+                                        return false;
+                                    }
+                                }
+                            }
+
+                            return true;
+                        });
+                    }
+
+                    inferenceContext.inferences[i].topLevel = h.topLevel;
                 }
                 else {
                     candidates = survivours.has(String(p.id)) ? [p] : undefined;
