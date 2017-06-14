@@ -15544,18 +15544,48 @@ namespace ts {
         }
 
         function promoteDeferred(st: InfState, ctx: InfCtx): boolean {
-            let anyPromoted = false;
-
             ctx.deferredConstraints = filter(ctx.deferredConstraints, c => {
-                const source = instantiateType(c[0], ctx.typeMapper);
-                const target = instantiateType(c[1], ctx.typeMapper);
+                let source = instantiateType(c[0], ctx.typeMapper);
+                let target = instantiateType(c[1], ctx.typeMapper);
 
-                debugger;
+                if ((source.flags & TypeFlags.UnionOrIntersection) === (target.flags & TypeFlags.UnionOrIntersection) && isUnionOrIntersection(source) && isUnionOrIntersection(target)) {
+                    [source, target] = removeMatchingTypes(<UnionOrIntersectionType>source, <UnionOrIntersectionType>target);
+                    if (source === target) {
+                        return false;
+                    }
+                }
 
+                const srcTyVars = collectTypeVariables(source, ctx);
+                const tgtTyVars = collectTypeVariables(target, ctx);
+
+                if (!srcTyVars.size && !tgtTyVars.size) {
+                    return false;
+                }
+
+                if ((source.flags & TypeFlags.UnionOrIntersection) === (target.flags & TypeFlags.UnionOrIntersection) && isUnionOrIntersection(source) && isUnionOrIntersection(target)) {
+                    if (source.types.length === 1 && target.types.length === 1) {
+                        uniTypes(ctx, source, target);
+                        return false;
+                    }
+
+                    if (srcTyVars.size === 1 && tgtTyVars.size == 1 && source.types.length === 2 && target.types.length === 2) {
+                        const srcIdx = collectTypeVariables(source.types[0], ctx) === srcTyVars ? 0 : 1;
+                        const tgtIdx = collectTypeVariables(source.types[0], ctx) === tgtTyVars ? 0 : 1;
+
+                        uniTypes(ctx, source.types[(srcIdx + 1) % 2], target.types[tgtIdx]);
+                        uniTypes(ctx, target.types[(tgtIdx + 1) % 2], source.types[srcIdx]);
+
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                uniTypes(ctx, source, target);
                 return false;
             });
 
-            return anyPromoted;
+            return ctx.constraints.length !== 0;
         }
 
         function uniTypes(ctx: InfCtx, source: Type, target: Type) {
@@ -15579,48 +15609,12 @@ namespace ts {
                 }
                 return;
             }
-            if (source.flags & TypeFlags.Union && target.flags & TypeFlags.Union && !(source.flags & TypeFlags.EnumLiteral && target.flags & TypeFlags.EnumLiteral) ||
-                source.flags & TypeFlags.Intersection && target.flags & TypeFlags.Intersection) {
-
-                // Source and target are both unions or both intersections. If source and target
-                // are the same type, just relate each constituent type to itself.
-                // if (source === target) {
-                //     for (const t of (<UnionOrIntersectionType>source).types) {
-                //         uniTypes(t, t);
-                //     }
-                //     return;
-                // }
-
-                // Find each source constituent type that has an identically matching target constituent
-                // type, and for each such type infer from the type to itself. When inferring from a
-                // type to itself we effectively find all type parameter occurrences within that type
-                // and infer themselves as their type arguments. We have special handling for numeric
-                // and string literals because the number and string types are not represented as unions
-                // of all their possible values.
-                let matchingTypes: Type[];
-                for (const t of (<UnionOrIntersectionType>source).types) {
-                    if (typeIdenticalToSomeType(t, (<UnionOrIntersectionType>target).types)) {
-                        (matchingTypes || (matchingTypes = [])).push(t);
-                        // uniTypes(t, t);
-                    }
-                    else if (t.flags & (TypeFlags.NumberLiteral | TypeFlags.StringLiteral)) {
-                        const b = getBaseTypeOfLiteralType(t);
-                        if (typeIdenticalToSomeType(b, (<UnionOrIntersectionType>target).types)) {
-                            (matchingTypes || (matchingTypes = [])).push(t, b);
-                        }
-                    }
-                }
-                // Next, to improve the quality of inferences, reduce the source and target types by
-                // removing the identically matched constituents. For example, when inferring from
-                // 'string | string[]' to 'string | T' we reduce the types to 'string[]' and 'T'.
-                if (matchingTypes) {
-                    source = removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>source, matchingTypes);
-                    target = removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>target, matchingTypes);
-                }
-
+            if ((source.flags & TypeFlags.UnionOrIntersection) === (target.flags & TypeFlags.UnionOrIntersection) && isUnionOrIntersection(source) && isUnionOrIntersection(target)) {
+                [source, target] = removeMatchingTypes(source, target);
                 if (source === target) {
                     return;
                 }
+                ctx.deferredConstraints.push([target, source]);
             }
             if (target.flags & TypeFlags.TypeVariable && ctx.polyVars.has(String(target.id))
                 || source.flags & TypeFlags.TypeVariable && ctx.polyVars.has(String(source.id))) {
@@ -15642,7 +15636,7 @@ namespace ts {
                 let typeVariable: TypeVariable;
                 // First infer to each type in union or intersection that isn't a type variable
                 for (const t of targetTypes) {
-                    if (t.flags & TypeFlags.TypeVariable && ctx.typeParams.has(String(t.id))) {
+                    if (ctx.polyVars.has(String(t.id))) {
                         typeVariable = <TypeVariable>t;
                         typeVariableCount++;
                     }
@@ -15693,6 +15687,39 @@ namespace ts {
                     }
                 }
             }
+        }
+
+        function isUnionOrIntersection(x: Type): x is UnionOrIntersectionType {
+            return !!(x.flags & TypeFlags.Union && !(x.flags & TypeFlags.EnumLiteral) || x.flags & TypeFlags.Intersection);
+        }
+
+        function removeMatchingTypes(source: UnionOrIntersectionType, target: UnionOrIntersectionType): [Type, Type] {
+            // Find each source constituent type that has an identically matching target constituent
+            // type, and for each such type infer from the type to itself. When inferring from a
+            // type to itself we effectively find all type parameter occurrences within that type
+            // and infer themselves as their type arguments. We have special handling for numeric
+            // and string literals because the number and string types are not represented as unions
+            // of all their possible values.
+            let matchingTypes: Type[];
+            for (const t of (<UnionOrIntersectionType>source).types) {
+                if (typeIdenticalToSomeType(t, (<UnionOrIntersectionType>target).types)) {
+                    (matchingTypes || (matchingTypes = [])).push(t);
+                    // uniTypes(t, t);
+                }
+                else if (t.flags & (TypeFlags.NumberLiteral | TypeFlags.StringLiteral)) {
+                    const b = getBaseTypeOfLiteralType(t);
+                    if (typeIdenticalToSomeType(b, (<UnionOrIntersectionType>target).types)) {
+                        (matchingTypes || (matchingTypes = [])).push(t, b);
+                    }
+                }
+            }
+            // Next, to improve the quality of inferences, reduce the source and target types by
+            // removing the identically matched constituents. For example, when inferring from
+            // 'string | string[]' to 'string | T' we reduce the types to 'string[]' and 'T'.
+            return matchingTypes
+                ? [ removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>source, matchingTypes),
+                    removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>target, matchingTypes) ]
+                : [ source, target ];
         }
 
         function uniObjectTypes(ctx: InfCtx, source: Type, target: Type) {
