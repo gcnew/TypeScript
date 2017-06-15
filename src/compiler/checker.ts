@@ -15237,7 +15237,9 @@ namespace ts {
                     });
 
                     if (tyParams.length) {
-                        singleCallSignature.typeParameters = tyParams;
+                        singleCallSignature.typeParameters = singleCallSignature.typeParameters
+                            ? singleCallSignature.typeParameters.concat(tyParams)
+                            : tyParams;
 
                         // promote the return type to non-instantiated, otherwise the type variables
                         // will get lost during subsequent instantiations
@@ -15525,7 +15527,8 @@ namespace ts {
             // TODO: widening
             // const baseCandidates = sameMap(h.types, getWidenedLiteralType);
             const instantiated = instantiateList(h.types, ctx.typeMapper, instantiateType);
-            const reduced =  getCommonSupertype(instantiated);
+            const commonSuperType = reduceLeft(instantiated, (s, t) => isTypeSubtypeOf(s, t) ? t : s);
+            const reduced =  getWidenedType(commonSuperType);
 
             if (!reduced) {
                 return true;
@@ -16565,7 +16568,7 @@ namespace ts {
                             }
                             candidate = getSignatureInstantiation(candidate, typeArgumentTypes);
                         }
-                        if (!checkApplicableSignature(node, args, candidate, relation, excludeArgument, /*reportErrors*/ false)) {
+                        if (!checkApplicableSignature(node, args, candidate, relation, infTypeArguments === inferCall ? undefined : excludeArgument, /*reportErrors*/ false)) {
                             candidateForArgumentError = candidate;
                             break;
                         }
