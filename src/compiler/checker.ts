@@ -15054,7 +15054,8 @@ namespace ts {
             symbolStack: Symbol[],
             visited: Map<boolean>,
             tyVarCache: Map<Map<TypeVariable>>,
-            typeMapper: TypeMapper
+            typeMapper: TypeMapper,
+            contextual: boolean
         }
 
         type Heya = {
@@ -15087,7 +15088,8 @@ namespace ts {
                 symbolStack: [],
                 visited: createMap<boolean>(),
                 tyVarCache: createMap<Map<TypeVariable>>(),
-                typeMapper: undefined
+                typeMapper: undefined,
+                contextual: false
             };
         }
 
@@ -15146,15 +15148,17 @@ namespace ts {
             let solveRes: 'success'|'ambiguous'|'reduce_fail' = solve(st, ctx);
 
             if (solveRes === 'success' && excludes) {
+                ctx.contextual = true;
                 for (let i = 0; i < argCount; i++) {
                     // No need to check for omitted args and template expressions, their exclusion value is always undefined
                     if (excludes[i]) {
                         const arg = args[i];
                         const paramType = getTypeAtPosition(signature, i);
-                        uniTypes(ctx, checkExpressionWithContextualType(arg, paramType, ctx.typeMapper), paramType);
+                        const argType = checkExpressionWithContextualType(arg, paramType, ctx.typeMapper);
+
+                        uniTypes(ctx, argType, paramType);
                     }
                 }
-
                 solveRes = solve(st, ctx);
             }
 
@@ -15485,7 +15489,7 @@ namespace ts {
             st.forEach(h => h.reduced = false);
             st.forEach(h => {
                 Debug.assert(!h.complicated, 'Non-promoted compount constraints found');
-                hasError = hasError || unifySimpleHelper(h, [], st, ctx);
+                hasError = unifySimpleHelper(h, [], st, ctx) && hasError;
             });
 
             return hasError;
@@ -15524,25 +15528,33 @@ namespace ts {
                 }
             }
 
-            // TODO: widening
-            // const baseCandidates = sameMap(h.types, getWidenedLiteralType);
+            let reduceError = false;
             const instantiated = instantiateList(h.types, ctx.typeMapper, instantiateType);
-            const commonSuperType = reduceLeft(instantiated, (s, t) => isTypeSubtypeOf(s, t) ? t : s);
-            const reduced =  getWidenedType(commonSuperType);
+            const commonSuperType = reduceLeft(instantiated, (s, t) => {
+                if (isTypeSubtypeOf(s, t)) {
+                    return t;
+                }
 
-            if (!reduced) {
-                return true;
-            }
+                const ws = getWidenedLiteralType(s);
+                const wt = getWidenedLiteralType(t);
+
+                if (isTypeSubtypeOf(ws, wt)) {
+                    return wt;
+                }
+
+                reduceError = true;
+                return ws;
+            });
 
             h.reduced = true;
-            h.types = [ reduced ];
+            h.types = [ getWidenedType(commonSuperType) ];
 
             // pop out our type variables from seen
             for (let i = 0; i < h.tyVars.length; ++i) {
                 seen.pop();
             }
 
-            return false;
+            return reduceError;
         }
 
         function promoteComplicated(st: InfState, ctx: InfCtx): boolean {
@@ -15643,6 +15655,19 @@ namespace ts {
             }
             if (target.flags & TypeFlags.TypeVariable && ctx.polyVars.has(String(target.id))
                 || source.flags & TypeFlags.TypeVariable && ctx.polyVars.has(String(source.id))) {
+                if (source.flags & TypeFlags.ContainsAnyFunctionType || source === silentNeverType) {
+                    return;
+                }
+
+                // If we are inferring from context sensitive arguments and strictNullChecks is off,
+                // `any` is most likely the result of widening. Use it only as a last measure by making
+                // it a deferred constraint. Deferred constraints influence only parameters without any
+                // other constituents.
+                if (ctx.contextual && source === anyType && !strictNullChecks) {
+                    ctx.deferredConstraints.push([target, source]);
+                    return;
+                }
+
                 ctx.constraints.push([target, source]);
                 return;
             }
