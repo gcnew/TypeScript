@@ -7588,7 +7588,7 @@ namespace ts {
             // eagerly using the constraint type of 'this' at the given location.
             if (maybeTypeOfKind(indexType, TypeFlags.TypeVariable | TypeFlags.Index) ||
                 maybeTypeOfKind(objectType, TypeFlags.TypeVariable) && !(accessNode && accessNode.kind === SyntaxKind.ElementAccessExpression) ||
-                isGenericMappedType(objectType)) {
+                maybeTypeOfKind(objectType, isGenericMappedType)) {
                 if (objectType.flags & TypeFlags.Any) {
                     return objectType;
                 }
@@ -16976,14 +16976,18 @@ namespace ts {
 
         // Return true if type might be of the given kind. A union or intersection type might be of a given
         // kind if at least one constituent type is of the given kind.
-        function maybeTypeOfKind(type: Type, kind: TypeFlags): boolean {
-            if (type.flags & kind) {
+        function maybeTypeOfKind(type: Type, kindOrPred: TypeFlags | ((x: Type) => boolean)): boolean {
+            const pred = typeof kindOrPred === 'number'
+                ? (t: Type) => (t.flags & kindOrPred) !== 0
+                : kindOrPred;
+
+            if (pred(type)) {
                 return true;
             }
             if (type.flags & TypeFlags.UnionOrIntersection) {
                 const types = (<UnionOrIntersectionType>type).types;
                 for (const t of types) {
-                    if (maybeTypeOfKind(t, kind)) {
+                    if (maybeTypeOfKind(t, pred)) {
                         return true;
                     }
                 }
