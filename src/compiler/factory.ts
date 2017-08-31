@@ -755,6 +755,18 @@ namespace ts {
             : node;
     }
 
+    export function createNonNullTypeNode(innerType: TypeNode) {
+        const node = createSynthesizedNode(SyntaxKind.NonNullType) as NonNullTypeNode;
+        node.type = parenthesizeElementTypeMember(innerType);
+        return node;
+    }
+
+    export function updateNonNullTypeNode(node: NonNullTypeNode, innerType: TypeNode) {
+        return node.type !== innerType
+            ? updateNode(createNonNullTypeNode(innerType), node)
+            : node;
+    }
+
     export function createMappedTypeNode(readonlyToken: ReadonlyToken | undefined, typeParameter: TypeParameterDeclaration, questionToken: QuestionToken | undefined, type: TypeNode | undefined): MappedTypeNode {
         const node = createSynthesizedNode(SyntaxKind.MappedType) as MappedTypeNode;
         node.readonlyToken = readonlyToken;

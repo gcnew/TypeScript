@@ -3310,6 +3310,10 @@ namespace ts {
                         writeType((<IndexedAccessType>type).indexType, TypeFormatFlags.None);
                         writePunctuation(writer, SyntaxKind.CloseBracketToken);
                     }
+                    else if (type.flags & TypeFlags.NonNull) {
+                        writeType((<NonNullType>type).innerType, nextFlags);
+                        writePunctuation(writer, SyntaxKind.ExclamationToken);
+                    }
                     else {
                         // Should never get here
                         // { ... }
@@ -7764,6 +7768,24 @@ namespace ts {
             return links.resolvedType;
         }
 
+        function getNonNullType(innerType: Type): Type {
+            if (isGenericIndexType(innerType) || isGenericObjectType(innerType) || isGenericMappedType(innerType)) {
+                const type = <NonNullType> createType(TypeFlags.NonNull);
+                type.innerType = innerType;
+                return type;
+            }
+
+            return getNonNullableType(innerType);
+        }
+
+        function getTypeFromNonNullTypeNode(node: NonNullTypeNode) {
+            const links = getNodeLinks(node);
+            if (!links.resolvedType) {
+                links.resolvedType = getNonNullType(getTypeFromTypeNode(node.type));
+            }
+            return links.resolvedType;
+        }
+
         function getTypeFromMappedTypeNode(node: MappedTypeNode): Type {
             const links = getNodeLinks(node);
             if (!links.resolvedType) {
@@ -8025,7 +8047,6 @@ namespace ts {
                 case SyntaxKind.JSDocNullableType:
                     return getTypeFromJSDocNullableTypeNode(<JSDocNullableType>node);
                 case SyntaxKind.ParenthesizedType:
-                case SyntaxKind.JSDocNonNullableType:
                 case SyntaxKind.JSDocOptionalType:
                 case SyntaxKind.JSDocTypeExpression:
                     return getTypeFromTypeNode((<ParenthesizedTypeNode | JSDocTypeReferencingNode | JSDocTypeExpression>node).type);
@@ -8039,6 +8060,8 @@ namespace ts {
                     return getTypeFromTypeOperatorNode(<TypeOperatorNode>node);
                 case SyntaxKind.IndexedAccessType:
                     return getTypeFromIndexedAccessTypeNode(<IndexedAccessTypeNode>node);
+                case SyntaxKind.NonNullType:
+                    return getTypeFromNonNullTypeNode(<NonNullTypeNode>node);
                 case SyntaxKind.MappedType:
                     return getTypeFromMappedTypeNode(<MappedTypeNode>node);
                 // This function assumes that an identifier or qualified name is a type expression
@@ -8323,6 +8346,9 @@ namespace ts {
                 }
                 if (type.flags & TypeFlags.Index) {
                     return getIndexType(instantiateType((<IndexType>type).type, mapper));
+                }
+                if (type.flags & TypeFlags.NonNull) {
+                    return getNonNullType(instantiateType((<NonNullType>type).innerType, mapper));
                 }
                 if (type.flags & TypeFlags.IndexedAccess) {
                     return getIndexedAccessType(instantiateType((<IndexedAccessType>type).objectType, mapper), instantiateType((<IndexedAccessType>type).indexType, mapper));
@@ -22427,10 +22453,10 @@ namespace ts {
                     checkSignatureDeclaration(node as JSDocFunctionType);
                     // falls through
                 case SyntaxKind.JSDocVariadicType:
-                case SyntaxKind.JSDocNonNullableType:
                 case SyntaxKind.JSDocNullableType:
                 case SyntaxKind.JSDocAllType:
                 case SyntaxKind.JSDocUnknownType:
+                    // TODO: check .type?
                     if (!isInJavaScriptFile(node) && !isInJSDoc(node)) {
                         grammarErrorOnNode(node, Diagnostics.JSDoc_types_can_only_be_used_inside_documentation_comments);
                     }
@@ -22439,6 +22465,11 @@ namespace ts {
                     return checkSourceElement((node as JSDocTypeExpression).type);
                 case SyntaxKind.IndexedAccessType:
                     return checkIndexedAccessType(<IndexedAccessTypeNode>node);
+                case SyntaxKind.NonNullType:
+                    if (!isInJavaScriptFile(node) && !isInJSDoc(node) && (<NonNullTypeNode>node).isPrefix) {
+                        grammarErrorOnNode(node, Diagnostics.JSDoc_types_can_only_be_used_inside_documentation_comments);
+                    }
+                    return checkSourceElement((<NonNullTypeNode>node).type);
                 case SyntaxKind.MappedType:
                     return checkMappedType(<MappedTypeNode>node);
                 case SyntaxKind.FunctionDeclaration:

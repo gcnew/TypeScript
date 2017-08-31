@@ -4212,6 +4212,10 @@ namespace ts {
         return node.kind === SyntaxKind.IndexedAccessType;
     }
 
+    export function isNonNullTypeNode(node: Node): node is NonNullTypeNode {
+        return node.kind === SyntaxKind.NonNullType;
+    }
+
     export function isMappedTypeNode(node: Node): node is MappedTypeNode {
         return node.kind === SyntaxKind.MappedType;
     }
@@ -4637,10 +4641,6 @@ namespace ts {
 
     export function isJSDocNullableType(node: Node): node is JSDocNullableType {
         return node.kind === SyntaxKind.JSDocNullableType;
-    }
-
-    export function isJSDocNonNullableType(node: Node): node is JSDocNonNullableType {
-        return node.kind === SyntaxKind.JSDocNonNullableType;
     }
 
     export function isJSDocOptionalType(node: Node): node is JSDocOptionalType {

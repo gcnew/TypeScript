@@ -238,6 +238,7 @@ namespace ts {
         ThisType,
         TypeOperator,
         IndexedAccessType,
+        NonNullType,
         MappedType,
         LiteralType,
         // Binding patterns
@@ -357,7 +358,6 @@ namespace ts {
         // The ? type
         JSDocUnknownType,
         JSDocNullableType,
-        JSDocNonNullableType,
         JSDocOptionalType,
         JSDocFunctionType,
         JSDocVariadicType,
@@ -1037,6 +1037,12 @@ namespace ts {
         kind: SyntaxKind.IndexedAccessType;
         objectType: TypeNode;
         indexType: TypeNode;
+    }
+
+    export interface NonNullTypeNode extends TypeNode {
+        kind: SyntaxKind.NonNullType,
+        type: TypeNode,
+        isPrefix?: true
     }
 
     export interface MappedTypeNode extends TypeNode, Declaration {
@@ -2115,11 +2121,6 @@ namespace ts {
         kind: SyntaxKind.JSDocUnknownType;
     }
 
-    export interface JSDocNonNullableType extends JSDocType {
-        kind: SyntaxKind.JSDocNonNullableType;
-        type: TypeNode;
-    }
-
     export interface JSDocNullableType extends JSDocType {
         kind: SyntaxKind.JSDocNullableType;
         type: TypeNode;
@@ -2139,7 +2140,7 @@ namespace ts {
         type: TypeNode;
     }
 
-    export type JSDocTypeReferencingNode = JSDocVariadicType | JSDocOptionalType | JSDocNullableType | JSDocNonNullableType;
+    export type JSDocTypeReferencingNode = JSDocVariadicType | JSDocOptionalType | JSDocNullableType;
 
     export interface JSDoc extends Node {
         kind: SyntaxKind.JSDocComment;
@@ -3201,17 +3202,18 @@ namespace ts {
         Intersection            = 1 << 17,  // Intersection (T & U)
         Index                   = 1 << 18,  // keyof T
         IndexedAccess           = 1 << 19,  // T[K]
+        NonNull                 = 1 << 20,  // T!
         /* @internal */
-        FreshLiteral            = 1 << 20,  // Fresh literal type
+        FreshLiteral            = 1 << 21,  // Fresh literal type
         /* @internal */
-        ContainsWideningType    = 1 << 21,  // Type is or contains undefined or null widening type
+        ContainsWideningType    = 1 << 22,  // Type is or contains undefined or null widening type
         /* @internal */
-        ContainsObjectLiteral   = 1 << 22,  // Type is or contains object literal type
+        ContainsObjectLiteral   = 1 << 23,  // Type is or contains object literal type
         /* @internal */
-        ContainsAnyFunctionType = 1 << 23,  // Type is or contains the anyFunctionType
-        NonPrimitive            = 1 << 24,  // intrinsic object type
+        ContainsAnyFunctionType = 1 << 24,  // Type is or contains the anyFunctionType
+        NonPrimitive            = 1 << 25,  // intrinsic object type
         /* @internal */
-        JsxAttributes           = 1 << 25,  // Jsx attributes type
+        JsxAttributes           = 1 << 26,  // Jsx attributes type
 
         /* @internal */
         Nullable = Undefined | Null,
@@ -3457,6 +3459,11 @@ namespace ts {
         objectType: Type;
         indexType: Type;
         constraint?: Type;
+    }
+
+    // T! types (TypeFlags.NonNull)
+    export interface NonNullType extends Type {
+        innerType: Type
     }
 
     // keyof T types (TypeFlags.Index)

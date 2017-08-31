@@ -150,6 +150,8 @@ namespace ts {
             case SyntaxKind.IndexedAccessType:
                 return visitNode(cbNode, (<IndexedAccessTypeNode>node).objectType) ||
                     visitNode(cbNode, (<IndexedAccessTypeNode>node).indexType);
+            case SyntaxKind.NonNullType:
+                return visitNode(cbNode, (<NonNullTypeNode>node).type);
             case SyntaxKind.MappedType:
                 return visitNode(cbNode, (<MappedTypeNode>node).readonlyToken) ||
                     visitNode(cbNode, (<MappedTypeNode>node).typeParameter) ||
@@ -396,8 +398,6 @@ namespace ts {
 
             case SyntaxKind.JSDocTypeExpression:
                 return visitNode(cbNode, (<JSDocTypeExpression>node).type);
-            case SyntaxKind.JSDocNonNullableType:
-                return visitNode(cbNode, (<JSDocNonNullableType>node).type);
             case SyntaxKind.JSDocNullableType:
                 return visitNode(cbNode, (<JSDocNullableType>node).type);
             case SyntaxKind.JSDocOptionalType:
@@ -2174,10 +2174,13 @@ namespace ts {
             return finishNode(parameter);
         }
 
-        function parseJSDocNodeWithType(kind: SyntaxKind.JSDocVariadicType | SyntaxKind.JSDocNonNullableType): TypeNode {
-            const result = createNode(kind) as JSDocVariadicType | JSDocNonNullableType;
+        function parseJSDocNodeWithType(kind: SyntaxKind.JSDocVariadicType | SyntaxKind.NonNullType): TypeNode {
+            const result = createNode(kind) as JSDocVariadicType | NonNullTypeNode;
             nextToken();
             result.type = parseType();
+            if (kind === SyntaxKind.NonNullType) {
+                (<NonNullTypeNode>result).isPrefix = true;
+            }
             return finishNode(result);
         }
 
@@ -2665,7 +2668,7 @@ namespace ts {
                 case SyntaxKind.DotDotDotToken:
                     return parseJSDocNodeWithType(SyntaxKind.JSDocVariadicType);
                 case SyntaxKind.ExclamationToken:
-                    return parseJSDocNodeWithType(SyntaxKind.JSDocNonNullableType);
+                    return parseJSDocNodeWithType(SyntaxKind.NonNullType);
                 case SyntaxKind.StringLiteral:
                 case SyntaxKind.NumericLiteral:
                 case SyntaxKind.TrueKeyword:
@@ -2749,7 +2752,7 @@ namespace ts {
             if (!kind) return type;
             nextToken();
 
-            const postfix = createNode(kind, type.pos) as JSDocOptionalType | JSDocNonNullableType | JSDocNullableType;
+            const postfix = createNode(kind, type.pos) as JSDocOptionalType | JSDocNullableType;
             postfix.type = type;
             return finishNode(postfix);
 
@@ -2758,8 +2761,6 @@ namespace ts {
                     case SyntaxKind.EqualsToken:
                         // only parse postfix = inside jsdoc, because it's ambiguous elsewhere
                         return contextFlags & NodeFlags.JSDoc ? SyntaxKind.JSDocOptionalType : undefined;
-                    case SyntaxKind.ExclamationToken:
-                        return SyntaxKind.JSDocNonNullableType;
                     case SyntaxKind.QuestionToken:
                         return SyntaxKind.JSDocNullableType;
                 }
@@ -2768,19 +2769,29 @@ namespace ts {
 
         function parseArrayTypeOrHigher(): TypeNode {
             let type = parseJSDocPostfixTypeOrHigher();
-            while (!scanner.hasPrecedingLineBreak() && parseOptional(SyntaxKind.OpenBracketToken)) {
-                if (isStartOfType()) {
-                    const node = <IndexedAccessTypeNode>createNode(SyntaxKind.IndexedAccessType, type.pos);
-                    node.objectType = type;
-                    node.indexType = parseType();
-                    parseExpected(SyntaxKind.CloseBracketToken);
+            while (!scanner.hasPrecedingLineBreak()) {
+                if (parseOptional(SyntaxKind.ExclamationToken)) {
+                    const node = createNode(SyntaxKind.NonNullType, type.pos) as NonNullTypeNode;
+                    node.type = type;
                     type = finishNode(node);
                 }
+                else if (parseOptional(SyntaxKind.OpenBracketToken)) {
+                    if (isStartOfType()) {
+                        const node = <IndexedAccessTypeNode>createNode(SyntaxKind.IndexedAccessType, type.pos);
+                        node.objectType = type;
+                        node.indexType = parseType();
+                        parseExpected(SyntaxKind.CloseBracketToken);
+                        type = finishNode(node);
+                    }
+                    else {
+                        const node = <ArrayTypeNode>createNode(SyntaxKind.ArrayType, type.pos);
+                        node.elementType = type;
+                        parseExpected(SyntaxKind.CloseBracketToken);
+                        type = finishNode(node);
+                    }
+                }
                 else {
-                    const node = <ArrayTypeNode>createNode(SyntaxKind.ArrayType, type.pos);
-                    node.elementType = type;
-                    parseExpected(SyntaxKind.CloseBracketToken);
-                    type = finishNode(node);
+                    break;
                 }
             }
             return type;

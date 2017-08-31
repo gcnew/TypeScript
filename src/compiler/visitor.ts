@@ -398,6 +398,10 @@ namespace ts {
                     visitNode((<IndexedAccessTypeNode>node).objectType, visitor, isTypeNode),
                     visitNode((<IndexedAccessTypeNode>node).indexType, visitor, isTypeNode));
 
+            case SyntaxKind.NonNullType:
+                return updateNonNullTypeNode(<NonNullTypeNode>node,
+                    visitNode((<NonNullTypeNode>node).type, visitor, isTypeNode));
+
             case SyntaxKind.MappedType:
                 return updateMappedTypeNode((<MappedTypeNode>node),
                     visitNode((<MappedTypeNode>node).readonlyToken, tokenVisitor, isToken),

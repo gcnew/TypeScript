@@ -375,6 +375,7 @@ namespace ts {
                 case SyntaxKind.ThisType:
                 case SyntaxKind.TypeOperator:
                 case SyntaxKind.IndexedAccessType:
+                case SyntaxKind.NonNullType:
                 case SyntaxKind.MappedType:
                 case SyntaxKind.LiteralType:
                     // TypeScript type nodes are elided.
@@ -1851,6 +1852,7 @@ namespace ts {
                 case SyntaxKind.TypeQuery:
                 case SyntaxKind.TypeOperator:
                 case SyntaxKind.IndexedAccessType:
+                case SyntaxKind.NonNullType:
                 case SyntaxKind.MappedType:
                 case SyntaxKind.TypeLiteral:
                 case SyntaxKind.AnyKeyword:

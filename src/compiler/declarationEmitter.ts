@@ -445,6 +445,8 @@ namespace ts {
                     return emitTypeOperator(<TypeOperatorNode>type);
                 case SyntaxKind.IndexedAccessType:
                     return emitIndexedAccessType(<IndexedAccessTypeNode>type);
+                case SyntaxKind.NonNullType:
+                    return emitNonNullType(<NonNullTypeNode>type);
                 case SyntaxKind.MappedType:
                     return emitMappedType(<MappedTypeNode>type);
                 case SyntaxKind.FunctionType:
@@ -551,6 +553,16 @@ namespace ts {
                 write("[");
                 emitType(node.indexType);
                 write("]");
+            }
+
+            function emitNonNullType(node: NonNullTypeNode) {
+                if (node.isPrefix) {
+                    write('!');
+                }
+                emitType(node.type);
+                if (!node.isPrefix) {
+                    write('!');
+                }
             }
 
             function emitMappedType(node: MappedTypeNode) {
