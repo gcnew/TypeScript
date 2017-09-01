@@ -2541,6 +2541,10 @@ namespace ts {
                     const indexTypeNode = typeToTypeNodeHelper((<IndexedAccessType>type).indexType, context);
                     return createIndexedAccessTypeNode(objectTypeNode, indexTypeNode);
                 }
+                if (type.flags & TypeFlags.NonNull) {
+                    const innerTypeNode = typeToTypeNodeHelper((<NonNullType> type).innerType, context);
+                    return createNonNullTypeNode(innerTypeNode);
+                }
 
                 Debug.fail("Should be unreachable.");
 
@@ -5937,10 +5941,11 @@ namespace ts {
             }
         }
 
-        function getConstraintOfType(type: TypeVariable | UnionOrIntersectionType): Type {
+        function getConstraintOfType(type: TypeVariable | UnionOrIntersectionType | NonNullType): Type {
             return type.flags & TypeFlags.TypeParameter ? getConstraintOfTypeParameter(<TypeParameter>type) :
                 type.flags & TypeFlags.IndexedAccess ? getConstraintOfIndexedAccess(<IndexedAccessType>type) :
-                    getBaseConstraintOfType(type);
+                    type.flags & TypeFlags.NonNull ? getConstraintOfType((<NonNullType>type).innerType) :
+                        getBaseConstraintOfType(type);
         }
 
         function getConstraintOfTypeParameter(typeParameter: TypeParameter): Type {
@@ -7555,7 +7560,7 @@ namespace ts {
             return links.resolvedType;
         }
 
-        function getIndexTypeForGenericType(type: TypeVariable | UnionOrIntersectionType) {
+        function getIndexTypeForGenericType(type: TypeVariable | UnionOrIntersectionType | NonNullType) {
             if (!type.resolvedIndexType) {
                 type.resolvedIndexType = <IndexType>createType(TypeFlags.Index);
                 type.resolvedIndexType.type = type;
@@ -7574,7 +7579,7 @@ namespace ts {
         }
 
         function getIndexType(type: Type): Type {
-            return maybeTypeOfKind(type, TypeFlags.TypeVariable) ? getIndexTypeForGenericType(<TypeVariable | UnionOrIntersectionType>type) :
+            return (maybeTypeOfKind(type, TypeFlags.TypeVariable) || isGenericNonNullType(type)) ? getIndexTypeForGenericType(<TypeVariable | UnionOrIntersectionType | NonNullType>type) :
                 getObjectFlags(type) & ObjectFlags.Mapped ? getConstraintTypeFromMappedType(<MappedType>type) :
                     type.flags & TypeFlags.Any || getIndexInfoOfType(type, IndexKind.String) ? stringType :
                         getLiteralTypeFromPropertyNames(type);
@@ -7768,10 +7773,23 @@ namespace ts {
             return links.resolvedType;
         }
 
+        function isGenericNonNullType(type: Type): boolean {
+            return type.flags & (TypeFlags.TypeVariable | TypeFlags.NonNull) ? true :
+                type.flags & TypeFlags.IndexedAccess ? (isGenericIndexType((<IndexedAccessType>type).indexType) || isGenericObjectType((<IndexedAccessType>type).objectType)) :
+                    type.flags & TypeFlags.UnionOrIntersection ? forEach((<UnionOrIntersectionType>type).types, isGenericNonNullType) :
+                        false;
+        }
+
         function getNonNullType(innerType: Type): Type {
-            if (isGenericIndexType(innerType) || isGenericObjectType(innerType) || isGenericMappedType(innerType)) {
+            if (isGenericNonNullType(innerType)) {
+                // Don't nest non-null types; null assertion is idempotent
+                if (innerType.flags & TypeFlags.NonNull) {
+                    return innerType;
+                }
+
                 const type = <NonNullType> createType(TypeFlags.NonNull);
-                type.innerType = innerType;
+                type.innerType = <UnionOrIntersectionType | TypeVariable>innerType;
+                Debug.assert((innerType.flags & (TypeFlags.UnionOrIntersection | TypeFlags.TypeVariable)) !== 0);
                 return type;
             }
 
@@ -8303,7 +8321,7 @@ namespace ts {
         }
 
         function isMappableType(type: Type) {
-            return type.flags & (TypeFlags.TypeParameter | TypeFlags.Object | TypeFlags.Intersection | TypeFlags.IndexedAccess);
+            return type.flags & (TypeFlags.TypeParameter | TypeFlags.Object | TypeFlags.Intersection | TypeFlags.IndexedAccess | TypeFlags.NonNull);
         }
 
         function instantiateAnonymousType(type: AnonymousType, mapper: TypeMapper): AnonymousType {

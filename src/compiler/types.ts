@@ -3463,12 +3463,14 @@ namespace ts {
 
     // T! types (TypeFlags.NonNull)
     export interface NonNullType extends Type {
-        innerType: Type
+        innerType: TypeVariable | UnionOrIntersectionType;
+        /* @internal */
+        resolvedIndexType: IndexType;
     }
 
     // keyof T types (TypeFlags.Index)
     export interface IndexType extends Type {
-        type: TypeVariable | UnionOrIntersectionType;
+        type: TypeVariable | UnionOrIntersectionType | NonNullType;
     }
 
     export const enum SignatureKind {
