@@ -2542,7 +2542,7 @@ namespace ts {
                     return createIndexedAccessTypeNode(objectTypeNode, indexTypeNode);
                 }
                 if (type.flags & TypeFlags.NonNull) {
-                    const innerTypeNode = typeToTypeNodeHelper((<NonNullType> type).innerType, context);
+                    const innerTypeNode = typeToTypeNodeHelper((<NonNullType>type).innerType, context);
                     return createNonNullTypeNode(innerTypeNode);
                 }
 
@@ -7787,7 +7787,7 @@ namespace ts {
                     return innerType;
                 }
 
-                const type = <NonNullType> createType(TypeFlags.NonNull);
+                const type = <NonNullType>createType(TypeFlags.NonNull);
                 type.innerType = <UnionOrIntersectionType | TypeVariable>innerType;
                 Debug.assert((innerType.flags & (TypeFlags.UnionOrIntersection | TypeFlags.TypeVariable)) !== 0);
                 return type;

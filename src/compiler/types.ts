@@ -1040,9 +1040,9 @@ namespace ts {
     }
 
     export interface NonNullTypeNode extends TypeNode {
-        kind: SyntaxKind.NonNullType,
-        type: TypeNode,
-        isPrefix?: true
+        kind: SyntaxKind.NonNullType;
+        type: TypeNode;
+        isPrefix?: true;
     }
 
     export interface MappedTypeNode extends TypeNode, Declaration {

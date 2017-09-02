@@ -557,11 +557,11 @@ namespace ts {
 
             function emitNonNullType(node: NonNullTypeNode) {
                 if (node.isPrefix) {
-                    write('!');
+                    write("!");
                 }
                 emitType(node.type);
                 if (!node.isPrefix) {
-                    write('!');
+                    write("!");
                 }
             }
 
