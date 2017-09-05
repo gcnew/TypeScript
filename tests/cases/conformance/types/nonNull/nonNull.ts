@@ -147,3 +147,50 @@ const hg: typeof h = g;
 const wf: typeof w = f;
 const wg: typeof w = g;
 const wh: typeof w = h;
+
+type A    = { a: number }
+type OptA = { a: number | null }
+
+function knownTypes(a: A, optA: OptA, bangA: A!, bangOptA: OptA!, strictA: StrictMembers<A>, strictOptA: StrictMembers<OptA>) {
+    const a1: A = a;
+    const a2: A = optA;
+    const a3: A = bangA;
+    const a4: A = bangOptA;
+    const a5: A = strictA;
+    const a6: A = strictOptA;
+
+    const oa1: OptA = a;
+    const oa2: OptA = optA;
+    const oa3: OptA = bangA;
+    const oa4: OptA = bangOptA;
+    const oa5: OptA = strictA;
+    const oa6: OptA = strictOptA;
+
+    const ba1: A! = a;
+    const ba2: A! = optA;
+    const ba3: A! = bangA;
+    const ba4: A! = bangOptA;
+    const ba5: A! = strictA;
+    const ba6: A! = strictOptA;
+
+    const boa1: OptA! = a;
+    const boa2: OptA! = optA;
+    const boa3: OptA! = bangA;
+    const boa4: OptA! = bangOptA;
+    const boa5: OptA! = strictA;
+    const boa6: OptA! = strictOptA;
+
+    const sa1: StrictMembers<A> = a;
+    const sa2: StrictMembers<A> = optA;
+    const sa3: StrictMembers<A> = bangA;
+    const sa4: StrictMembers<A> = bangOptA;
+    const sa5: StrictMembers<A> = strictA;
+    const sa6: StrictMembers<A> = strictOptA;
+
+    const soa1: StrictMembers<OptA> = a;
+    const soa2: StrictMembers<OptA> = optA;
+    const soa3: StrictMembers<OptA> = bangA;
+    const soa4: StrictMembers<OptA> = bangOptA;
+    const soa5: StrictMembers<OptA> = strictA;
+    const soa6: StrictMembers<OptA> = strictOptA;
+}
