@@ -5941,10 +5941,15 @@ namespace ts {
             }
         }
 
+        function getConstraintOfNonNullType(type: NonNullType) {
+            const constraint = getConstraintOfType(type.innerType);
+            return constraint && getNonNullType(constraint);
+        }
+
         function getConstraintOfType(type: TypeVariable | UnionOrIntersectionType | NonNullType): Type {
             return type.flags & TypeFlags.TypeParameter ? getConstraintOfTypeParameter(<TypeParameter>type) :
                 type.flags & TypeFlags.IndexedAccess ? getConstraintOfIndexedAccess(<IndexedAccessType>type) :
-                    type.flags & TypeFlags.NonNull ? getConstraintOfType((<NonNullType>type).innerType) :
+                    type.flags & TypeFlags.NonNull ? getConstraintOfNonNullType(<NonNullType>type) :
                         getBaseConstraintOfType(type);
         }
 
@@ -5971,6 +5976,9 @@ namespace ts {
             }
             else if (type.flags & TypeFlags.Index) {
                 return stringType;
+            }
+            else if (type.flags & TypeFlags.NonNull) {
+                return getConstraintOfType(<NonNullType>type);
             }
             return undefined;
         }
@@ -6077,7 +6085,7 @@ namespace ts {
          * type itself. Note that the apparent type of a union type is the union type itself.
          */
         function getApparentType(type: Type): Type {
-            const t = type.flags & TypeFlags.TypeVariable ? getBaseConstraintOfType(type) || emptyObjectType : type;
+            const t = type.flags & (TypeFlags.TypeVariable | TypeFlags.NonNull) ? getBaseConstraintOfType(type) || emptyObjectType : type;
             return t.flags & TypeFlags.Intersection ? getApparentTypeOfIntersectionType(<IntersectionType>t) :
                 t.flags & TypeFlags.StringLike ? globalStringType :
                 t.flags & TypeFlags.NumberLike ? globalNumberType :
@@ -9331,6 +9339,24 @@ namespace ts {
                         }
                     }
                 }
+                else if (target.flags & TypeFlags.NonNull) {
+                    // A type S! is related to a type T! if S is related to T
+                    if (source.flags & TypeFlags.NonNull) {
+                        if (result = isRelatedTo((<NonNullType>source).innerType, (<NonNullType>target).innerType, /*reportErrors*/ false)) {
+                            return result;
+                        }
+                    }
+
+                    // Skolem?
+                    // A type S is assignable to T! if S is assignable to C!, where C is the
+                    // constraint of T.
+                    // const constraint = getConstraintOfNonNullType(<NonNullType>target);
+                    // if (constraint) {
+                    //     if (result = isRelatedTo(source, constraint, reportErrors)) {
+                    //         return result;
+                    //     }
+                    // }
+                }
 
                 if (source.flags & TypeFlags.TypeParameter) {
                     // A source type T is related to a target type { [P in keyof T]: X } if T[P] is related to X.
@@ -9374,6 +9400,20 @@ namespace ts {
                         // if we have indexed access types with identical index types, see if relationship holds for
                         // the two object types.
                         if (result = isRelatedTo((<IndexedAccessType>source).objectType, (<IndexedAccessType>target).objectType, reportErrors)) {
+                            return result;
+                        }
+                    }
+                }
+                else if (source.flags & TypeFlags.NonNull) {
+                    // A type S! is related to T, if S is related to T
+                    if (result = isRelatedTo((<NonNullType>source).innerType, target, /*reportErrors*/ false)) {
+                        return result;
+                    }
+
+                    // or the constraint C of S! is related to T
+                    const constraint = getConstraintOfType(<NonNullType>source);
+                    if (constraint) {
+                        if (result = isRelatedTo(constraint, target, reportErrors)) {
                             return result;
                         }
                     }
@@ -11085,6 +11125,7 @@ namespace ts {
 
         function getTypeFacts(type: Type): TypeFacts {
             const flags = type.flags;
+            // TODO: ...
             if (flags & TypeFlags.String) {
                 return strictNullChecks ? TypeFacts.StringStrictFacts : TypeFacts.StringFacts;
             }
