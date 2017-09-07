@@ -105,7 +105,8 @@ function assignability2<T extends number|null>(x: T, y: T!) {
     const a: T = y;
     const b: T! = x;
     const c: T! = y;
-    const d: number = y;
+    const d: number = x;
+    const e: number = y;
 }
 
 type IdMapped<T> = { [K in keyof T]: T[K] }
