@@ -7677,14 +7677,14 @@ namespace ts {
         }
 
         function isGenericObjectType(type: Type): boolean {
-            return type.flags & TypeFlags.TypeVariable ? true :
+            return type.flags & (TypeFlags.TypeVariable | TypeFlags.NonNull) ? true :
                 getObjectFlags(type) & ObjectFlags.Mapped ? isGenericIndexType(getConstraintTypeFromMappedType(<MappedType>type)) :
                 type.flags & TypeFlags.UnionOrIntersection ? forEach((<UnionOrIntersectionType>type).types, isGenericObjectType) :
                 false;
         }
 
         function isGenericIndexType(type: Type): boolean {
-            return type.flags & (TypeFlags.TypeVariable | TypeFlags.Index) ? true :
+            return type.flags & (TypeFlags.TypeVariable | TypeFlags.Index | TypeFlags.NonNull) ? true :
                 type.flags & TypeFlags.UnionOrIntersection ? forEach((<UnionOrIntersectionType>type).types, isGenericIndexType) :
                 false;
         }
@@ -7789,19 +7789,21 @@ namespace ts {
         }
 
         function getNonNullType(innerType: Type): Type {
-            if (isGenericNonNullType(innerType)) {
+            const nonNullInnerType = getNonNullableType(innerType);
+
+            if (isGenericNonNullType(nonNullInnerType)) {
                 // Don't nest non-null types; null assertion is idempotent
-                if (innerType.flags & TypeFlags.NonNull) {
-                    return innerType;
+                if (nonNullInnerType.flags & TypeFlags.NonNull) {
+                    return nonNullInnerType;
                 }
 
                 const type = <NonNullType>createType(TypeFlags.NonNull);
-                type.innerType = <UnionOrIntersectionType | TypeVariable>innerType;
-                Debug.assert((innerType.flags & (TypeFlags.UnionOrIntersection | TypeFlags.TypeVariable)) !== 0);
+                type.innerType = <UnionOrIntersectionType | TypeVariable>nonNullInnerType;
+                Debug.assert((nonNullInnerType.flags & (TypeFlags.UnionOrIntersection | TypeFlags.TypeVariable)) !== 0);
                 return type;
             }
 
-            return getNonNullableType(innerType);
+            return nonNullInnerType;
         }
 
         function getTypeFromNonNullTypeNode(node: NonNullTypeNode) {
@@ -9300,9 +9302,10 @@ namespace ts {
             function structuredTypeRelatedTo(source: Type, target: Type, reportErrors: boolean): Ternary {
                 let result: Ternary;
                 const saveErrorInfo = errorInfo;
-                if (target.flags & TypeFlags.TypeParameter) {
+                if (target.flags & TypeFlags.TypeParameter ||
+                    target.flags & TypeFlags.NonNull && (<NonNullType>target).innerType.flags & TypeFlags.TypeParameter && getObjectFlags(source) & ObjectFlags.Mapped) {
                     // A source type { [P in keyof T]: X } is related to a target type T if X is related to T[P].
-                    if (getObjectFlags(source) & ObjectFlags.Mapped && getConstraintTypeFromMappedType(<MappedType>source) === getIndexType(target)) {
+                    if (getObjectFlags(source) & ObjectFlags.Mapped && isTypeAssignableTo(getIndexType(target), getConstraintTypeFromMappedType(<MappedType>source))) {
                         if (!(<MappedType>source).declaration.questionToken) {
                             const templateType = getTemplateTypeFromMappedType(<MappedType>source);
                             const indexedAccessType = getIndexedAccessType(target, getTypeParameterFromMappedType(<MappedType>source));
@@ -9358,9 +9361,10 @@ namespace ts {
                     // }
                 }
 
-                if (source.flags & TypeFlags.TypeParameter) {
+                if (source.flags & TypeFlags.TypeParameter ||
+                    source.flags & TypeFlags.NonNull && (<NonNullType>source).innerType.flags & TypeFlags.TypeParameter && getObjectFlags(target) & ObjectFlags.Mapped) {
                     // A source type T is related to a target type { [P in keyof T]: X } if T[P] is related to X.
-                    if (getObjectFlags(target) & ObjectFlags.Mapped && getConstraintTypeFromMappedType(<MappedType>target) === getIndexType(source)) {
+                    if (getObjectFlags(target) & ObjectFlags.Mapped && isTypeAssignableTo(getConstraintTypeFromMappedType(<MappedType>target), getIndexType(source))) {
                         const indexedAccessType = getIndexedAccessType(source, getTypeParameterFromMappedType(<MappedType>target));
                         const templateType = getTemplateTypeFromMappedType(<MappedType>target);
                         if (result = isRelatedTo(indexedAccessType, templateType, reportErrors)) {
@@ -9369,7 +9373,7 @@ namespace ts {
                         }
                     }
                     else {
-                        let constraint = getConstraintOfTypeParameter(<TypeParameter>source);
+                        let constraint = getConstraintOfType(<TypeParameter | NonNullType>source);
                         // A type parameter with no constraint is not related to the non-primitive object type.
                         if (constraint || !(target.flags & TypeFlags.NonPrimitive)) {
                             if (!constraint || constraint.flags & TypeFlags.Any) {

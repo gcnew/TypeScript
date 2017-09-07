@@ -1,5 +1,4 @@
 tests/cases/conformance/types/nonNull/nonNull.ts(23,38): error TS2536: Type 'K' cannot be used to index type 'T'.
-tests/cases/conformance/types/nonNull/nonNull.ts(26,45): error TS2538: Type 'K!' cannot be used as an index type.
 tests/cases/conformance/types/nonNull/nonNull.ts(71,8): error TS2345: Argument of type '{ a: null; }' is not assignable to parameter of type '{ a: {}; }'.
   Types of property 'a' are incompatible.
     Type 'null' is not assignable to type '{}'.
@@ -17,9 +16,7 @@ tests/cases/conformance/types/nonNull/nonNull.ts(102,11): error TS2322: Type 'T'
 tests/cases/conformance/types/nonNull/nonNull.ts(104,11): error TS2322: Type 'T' is not assignable to type 'number'.
   Type 'number | null' is not assignable to type 'number'.
     Type 'null' is not assignable to type 'number'.
-tests/cases/conformance/types/nonNull/nonNull.ts(112,11): error TS2322: Type 'StrictMembers<T!>' is not assignable to type 'T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(113,11): error TS2322: Type 'StrictMembers<T>' is not assignable to type 'T!'.
-tests/cases/conformance/types/nonNull/nonNull.ts(114,11): error TS2322: Type 'StrictMembers<T!>' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(116,11): error TS2322: Type 'T' is not assignable to type 'StrictMembers<T>'.
   Type 'T[K]' is not assignable to type 'T[K]!'.
     Type 'T[string]' is not assignable to type 'T[K]!'.
@@ -31,9 +28,7 @@ tests/cases/conformance/types/nonNull/nonNull.ts(129,11): error TS2322: Type 'St
   Type 'keyof T!' is not assignable to type 'keyof T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(137,11): error TS2322: Type 'StrictMembers<T>' is not assignable to type 'Partial<T!>'.
   Type 'keyof T!' is not assignable to type 'keyof T'.
-tests/cases/conformance/types/nonNull/nonNull.ts(144,5): error TS2365: Operator '===' cannot be applied to types 'T' and 'StrictMembers<T!>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(147,5): error TS2365: Operator '===' cannot be applied to types 'T!' and 'StrictMembers<T>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(148,5): error TS2365: Operator '===' cannot be applied to types 'T!' and 'StrictMembers<T!>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(173,11): error TS2322: Type '<T>() => T!' is not assignable to type '<T>() => T'.
   Type '{}' is not assignable to type 'T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(177,11): error TS2322: Type '<T>() => IdMapped<T!>' is not assignable to type '<T>() => IdMapped<T>'.
@@ -92,12 +87,8 @@ tests/cases/conformance/types/nonNull/nonNull.ts(283,11): error TS2322: Type 'Op
     Type 'T | null' is not assignable to type 'T'.
       Type 'null' is not assignable to type 'T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(285,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(287,11): error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
-  Types of property 'a' are incompatible.
-    Type '(T | null)!' is not assignable to type 'T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(297,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(299,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(301,11): error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(310,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<A<T>>'.
   Types of property 'a' are incompatible.
     Type 'T' is not assignable to type 'T!'.
@@ -107,16 +98,13 @@ tests/cases/conformance/types/nonNull/nonNull.ts(311,11): error TS2322: Type 'Op
       Type 'null' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(312,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<A<T>>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(313,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<A<T>>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(315,11): error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'StrictMembers<A<T>>'.
-  Types of property 'a' are incompatible.
-    Type '(T | null)!' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(317,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
   Types of property 'a' are incompatible.
-    Type 'T' is not assignable to type '(T | null)!'.
+    Type 'T' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(318,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
   Types of property 'a' are incompatible.
-    Type 'T | null' is not assignable to type '(T | null)!'.
-      Type 'null' is not assignable to type '(T | null)!'.
+    Type 'T | null' is not assignable to type 'T!'.
+      Type 'null' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(319,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(320,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(334,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
@@ -124,13 +112,8 @@ tests/cases/conformance/types/nonNull/nonNull.ts(334,11): error TS2322: Type 'Op
     Type 'T | null' is not assignable to type 'T'.
       Type 'null' is not assignable to type 'T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(336,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(338,11): error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
-  Types of property 'a' are incompatible.
-    Type '(T | null)!' is not assignable to type 'T'.
-      Type 'number' is not assignable to type 'T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(348,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(350,11): error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(352,11): error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(361,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<A<T>>'.
   Types of property 'a' are incompatible.
     Type 'T' is not assignable to type 'T!'.
@@ -141,18 +124,14 @@ tests/cases/conformance/types/nonNull/nonNull.ts(362,11): error TS2322: Type 'Op
       Type 'null' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(363,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<A<T>>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(364,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<A<T>>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(366,11): error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'StrictMembers<A<T>>'.
-  Types of property 'a' are incompatible.
-    Type '(T | null)!' is not assignable to type 'T!'.
-      Type 'number' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(368,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
   Types of property 'a' are incompatible.
-    Type 'T' is not assignable to type '(T | null)!'.
-      Type 'number' is not assignable to type '(T | null)!'.
+    Type 'T' is not assignable to type 'T!'.
+      Type 'number' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
   Types of property 'a' are incompatible.
-    Type 'T | null' is not assignable to type '(T | null)!'.
-      Type 'null' is not assignable to type '(T | null)!'.
+    Type 'T | null' is not assignable to type 'T!'.
+      Type 'null' is not assignable to type 'T!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(370,11): error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(371,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(388,11): error TS2322: Type 'B!' is not assignable to type '{ x: number; }'.
@@ -162,7 +141,7 @@ tests/cases/conformance/types/nonNull/nonNull.ts(388,11): error TS2322: Type 'B!
 tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' is not assignable to type 'A!'.
 
 
-==== tests/cases/conformance/types/nonNull/nonNull.ts (83 errors) ====
+==== tests/cases/conformance/types/nonNull/nonNull.ts (72 errors) ====
     type NonNull<T> = T!
     type IndexNullable<T, K extends keyof T!> = T![K]
     type NonNullableMember<T, K extends keyof T> = T[K]!
@@ -191,8 +170,6 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
     
     type StupidButOK<T>  = { [K in keyof T]: T![K] }
     type StupidButOK2<T> = { [K in keyof T]: T![K!] }  // FIXME
-                                                ~~
-!!! error TS2538: Type 'K!' cannot be used as an index type.
     
     type Obj = {
         x: number|null,
@@ -307,14 +284,10 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
     function mappedAssignability<T>(x: T, y: StrictMembers<T>, z: StrictMembers<T!>) {
         const a: T = y;
         const b: T = z;     // FIXME
-              ~
-!!! error TS2322: Type 'StrictMembers<T!>' is not assignable to type 'T'.
         const c: T! = y;
               ~
 !!! error TS2322: Type 'StrictMembers<T>' is not assignable to type 'T!'.
         const d: T! = z;    // FIXME
-              ~
-!!! error TS2322: Type 'StrictMembers<T!>' is not assignable to type 'T!'.
     
         const e: StrictMembers<T> = x;
               ~
@@ -362,16 +335,12 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
         x === y;
         x === z;
         x === w;  // FIXME
-        ~~~~~~~
-!!! error TS2365: Operator '===' cannot be applied to types 'T' and 'StrictMembers<T!>'.
     
         y === y;
         y === z;  // FIXME
         ~~~~~~~
 !!! error TS2365: Operator '===' cannot be applied to types 'T!' and 'StrictMembers<T>'.
         y === w;  // FIXME
-        ~~~~~~~
-!!! error TS2365: Operator '===' cannot be applied to types 'T!' and 'StrictMembers<T!>'.
     
         z === z;
         z === w;
@@ -597,10 +566,6 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
         const a5: A<T> = strictA;
         const a6: A<T> = strictOptA;  // FIXME
-              ~~
-!!! error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
-!!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type '(T | null)!' is not assignable to type 'T'.
     
         const oa1: OptA<T> = a;
         const oa2: OptA<T> = optA;
@@ -619,8 +584,6 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
         const ba5: A<T>! = strictA;
         const ba6: A<T>! = strictOptA;  // FIXME
-              ~~~
-!!! error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
     
         const boa1: OptA<T>! = a;
         const boa2: OptA<T>! = optA;
@@ -648,22 +611,18 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<A<T>>'.
         const sa5: StrictMembers<A<T>> = strictA;
         const sa6: StrictMembers<A<T>> = strictOptA;  // FIXME
-              ~~~
-!!! error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'StrictMembers<A<T>>'.
-!!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type '(T | null)!' is not assignable to type 'T!'.
     
         const soa1: StrictMembers<OptA<T>> = a;
               ~~~~
 !!! error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 !!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type 'T' is not assignable to type '(T | null)!'.
+!!! error TS2322:     Type 'T' is not assignable to type 'T!'.
         const soa2: StrictMembers<OptA<T>> = optA;
               ~~~~
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 !!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type 'T | null' is not assignable to type '(T | null)!'.
-!!! error TS2322:       Type 'null' is not assignable to type '(T | null)!'.
+!!! error TS2322:     Type 'T | null' is not assignable to type 'T!'.
+!!! error TS2322:       Type 'null' is not assignable to type 'T!'.
         const soa3: StrictMembers<OptA<T>> = bangA;
               ~~~~
 !!! error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
@@ -695,11 +654,6 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
         const a5: A<T> = strictA;
         const a6: A<T> = strictOptA;  // FIXME
-              ~~
-!!! error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
-!!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type '(T | null)!' is not assignable to type 'T'.
-!!! error TS2322:       Type 'number' is not assignable to type 'T'.
     
         const oa1: OptA<T> = a;
         const oa2: OptA<T> = optA;
@@ -718,8 +672,6 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'A<T>'.
         const ba5: A<T>! = strictA;
         const ba6: A<T>! = strictOptA;  // FIXME
-              ~~~
-!!! error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'A<T>'.
     
         const boa1: OptA<T>! = a;
         const boa2: OptA<T>! = optA;
@@ -748,24 +700,19 @@ tests/cases/conformance/types/nonNull/nonNull.ts(405,5): error TS2322: Type '3' 
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<A<T>>'.
         const sa5: StrictMembers<A<T>> = strictA;
         const sa6: StrictMembers<A<T>> = strictOptA;  // FIXME
-              ~~~
-!!! error TS2322: Type 'StrictMembers<OptA<T>>' is not assignable to type 'StrictMembers<A<T>>'.
-!!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type '(T | null)!' is not assignable to type 'T!'.
-!!! error TS2322:       Type 'number' is not assignable to type 'T!'.
     
         const soa1: StrictMembers<OptA<T>> = a;
               ~~~~
 !!! error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 !!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type 'T' is not assignable to type '(T | null)!'.
-!!! error TS2322:       Type 'number' is not assignable to type '(T | null)!'.
+!!! error TS2322:     Type 'T' is not assignable to type 'T!'.
+!!! error TS2322:       Type 'number' is not assignable to type 'T!'.
         const soa2: StrictMembers<OptA<T>> = optA;
               ~~~~
 !!! error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 !!! error TS2322:   Types of property 'a' are incompatible.
-!!! error TS2322:     Type 'T | null' is not assignable to type '(T | null)!'.
-!!! error TS2322:       Type 'null' is not assignable to type '(T | null)!'.
+!!! error TS2322:     Type 'T | null' is not assignable to type 'T!'.
+!!! error TS2322:       Type 'null' is not assignable to type 'T!'.
         const soa3: StrictMembers<OptA<T>> = bangA;
               ~~~~
 !!! error TS2322: Type 'A<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
