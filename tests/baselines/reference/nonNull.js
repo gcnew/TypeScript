@@ -23,8 +23,8 @@ type Strip2<T> = { [K in keyof T!]: T![K]! }
 
 type Error1<T, K extends keyof T!> = T[K]
 
-type StupidButOK<T>  = { [K in keyof T]: T![K] }
-type StupidButOK2<T> = { [K in keyof T]: T![K!] }  // FIXME
+type StupidButOK<T>  = { [K in keyof T]: T![K]  }
+type StupidButOK2<T> = { [K in keyof T]: T![K!] }
 
 type Obj = {
     x: number|null,
@@ -108,56 +108,73 @@ function assignability2<T extends number|null>(x: T, y: T!) {
 
 type IdMapped<T> = { [K in keyof T]: T[K] }
 
-function mappedAssignability<T>(x: T, y: StrictMembers<T>, z: StrictMembers<T!>) {
-    const a: T = y;
-    const b: T = z;     // FIXME
-    const c: T! = y;
-    const d: T! = z;    // FIXME
+function mappedAssignability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>) {
+    const v01: T = z;
+    const v02: T = w;
+    const v03: T! = z;
+    const v04: T! = w;
 
-    const e: StrictMembers<T> = x;
-    const f: StrictMembers<T> = y;
-    const g: StrictMembers<T> = z;
+    const v05: StrictMembers<T> = x;
+    const v06: StrictMembers<T> = y;
+    const v07: StrictMembers<T> = z;
+    const v08: StrictMembers<T> = w;
 
-    const h: StrictMembers<T!> = x;
-    const i: StrictMembers<T!> = y;
-    const j: StrictMembers<T!> = z;
+    const v09: StrictMembers<T!> = x;
+    const v10: StrictMembers<T!> = y;
+    const v11: StrictMembers<T!> = z;
+    const v12: StrictMembers<T!> = w;
 
-    const k: IdMapped<T> = x;
-    const l: IdMapped<T> = y;
-    const m: IdMapped<T> = z;
+    const v13: IdMapped<T> = x;
+    const v14: IdMapped<T> = y;
+    const v15: IdMapped<T> = z;
+    const v16: IdMapped<T> = w;
 
-    const n: IdMapped<T!> = x;
-    const o: IdMapped<T!> = y;
-    const p: IdMapped<T!> = z;
+    const v17: IdMapped<T!> = x;
+    const v18: IdMapped<T!> = y;
+    const v19: IdMapped<T!> = z;
+    const v20: IdMapped<T!> = w;
 
-    const q: Partial<T> = x;
-    const r: Partial<T> = y;
-    const s: Partial<T> = z;
+    const v21: Partial<T> = x;
+    const v22: Partial<T> = y;
+    const v23: Partial<T> = z;
+    const v24: Partial<T> = w;
 
-    const u: Partial<T!> = x; // FIXME
-    const v: Partial<T!> = y;
-    const w: Partial<T!> = z;
+    const v25: Partial<T!> = x; // FIXME: T ~ Partial<T!>;
+                                // T is inferred as {}, but the real type in strict mode actually is {} | null | undefined
+    const v26: Partial<T!> = y;
+    const v27: Partial<T!> = z;
+    const v28: Partial<T!> = w;
 }
 
-function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>) {
+function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>, p: Partial<T>, r: Partial<T!>) {
     x === y;
     x === z;
-    x === w;  // FIXME
+    x === w;
+    x === p;
+    x === r;
 
     y === y;
-    y === z;  // FIXME
-    y === w;  // FIXME
+    y === z;  // FIXME T![K]  ~  T[K]!
+    y === w;
+    y === p;
+    y === r;
 
     z === z;
     z === w;
+    z === p;
+    z === r;  // FIXME: same as y === z;
 
     w === w;
+    w === p;
+    w === r;
+
+    p === p;
+    p === r;
 }
 
 function flags<A, B>(x: A|B|undefined, y: A!) {
     if (x === y) {
-        // should be A!
-        x;  // FIXME
+        x;  // FIXME: should be A!
     }
 }
 
@@ -285,7 +302,7 @@ function unknownTypes<T>(
     const a3: A<T> = bangA;
     const a4: A<T> = bangOptA;
     const a5: A<T> = strictA;
-    const a6: A<T> = strictOptA;  // FIXME
+    const a6: A<T> = strictOptA;
 
     const oa1: OptA<T> = a;
     const oa2: OptA<T> = optA;
@@ -299,7 +316,7 @@ function unknownTypes<T>(
     const ba3: A<T>! = bangA;
     const ba4: A<T>! = bangOptA;
     const ba5: A<T>! = strictA;
-    const ba6: A<T>! = strictOptA;  // FIXME
+    const ba6: A<T>! = strictOptA;
 
     const boa1: OptA<T>! = a;
     const boa2: OptA<T>! = optA;
@@ -313,7 +330,7 @@ function unknownTypes<T>(
     const sa3: StrictMembers<A<T>> = bangA;
     const sa4: StrictMembers<A<T>> = bangOptA;
     const sa5: StrictMembers<A<T>> = strictA;
-    const sa6: StrictMembers<A<T>> = strictOptA;  // FIXME
+    const sa6: StrictMembers<A<T>> = strictOptA;
 
     const soa1: StrictMembers<OptA<T>> = a;
     const soa2: StrictMembers<OptA<T>> = optA;
@@ -336,7 +353,7 @@ function extendsTypes<T extends number>(
     const a3: A<T> = bangA;
     const a4: A<T> = bangOptA;
     const a5: A<T> = strictA;
-    const a6: A<T> = strictOptA;  // FIXME
+    const a6: A<T> = strictOptA;
 
     const oa1: OptA<T> = a;
     const oa2: OptA<T> = optA;
@@ -350,7 +367,7 @@ function extendsTypes<T extends number>(
     const ba3: A<T>! = bangA;
     const ba4: A<T>! = bangOptA;
     const ba5: A<T>! = strictA;
-    const ba6: A<T>! = strictOptA;  // FIXME
+    const ba6: A<T>! = strictOptA;
 
     const boa1: OptA<T>! = a;
     const boa2: OptA<T>! = optA;
@@ -364,7 +381,7 @@ function extendsTypes<T extends number>(
     const sa3: StrictMembers<A<T>> = bangA;
     const sa4: StrictMembers<A<T>> = bangOptA;
     const sa5: StrictMembers<A<T>> = strictA;
-    const sa6: StrictMembers<A<T>> = strictOptA;  // FIXME
+    const sa6: StrictMembers<A<T>> = strictOptA;
 
     const soa1: StrictMembers<OptA<T>> = a;
     const soa2: StrictMembers<OptA<T>> = optA;
@@ -447,45 +464,61 @@ function assignability2(x, y) {
     var d = x;
     var e = y;
 }
-function mappedAssignability(x, y, z) {
-    var a = y;
-    var b = z; // FIXME
-    var c = y;
-    var d = z; // FIXME
-    var e = x;
-    var f = y;
-    var g = z;
-    var h = x;
-    var i = y;
-    var j = z;
-    var k = x;
-    var l = y;
-    var m = z;
-    var n = x;
-    var o = y;
-    var p = z;
-    var q = x;
-    var r = y;
-    var s = z;
-    var u = x; // FIXME
-    var v = y;
-    var w = z;
+function mappedAssignability(x, y, z, w) {
+    var v01 = z;
+    var v02 = w;
+    var v03 = z;
+    var v04 = w;
+    var v05 = x;
+    var v06 = y;
+    var v07 = z;
+    var v08 = w;
+    var v09 = x;
+    var v10 = y;
+    var v11 = z;
+    var v12 = w;
+    var v13 = x;
+    var v14 = y;
+    var v15 = z;
+    var v16 = w;
+    var v17 = x;
+    var v18 = y;
+    var v19 = z;
+    var v20 = w;
+    var v21 = x;
+    var v22 = y;
+    var v23 = z;
+    var v24 = w;
+    var v25 = x; // FIXME: T ~ Partial<T!>;
+    // T is inferred as {}, but the real type in strict mode actually is {} | null | undefined
+    var v26 = y;
+    var v27 = z;
+    var v28 = w;
 }
-function comparability(x, y, z, w) {
+function comparability(x, y, z, w, p, r) {
     x === y;
     x === z;
-    x === w; // FIXME
+    x === w;
+    x === p;
+    x === r;
     y === y;
-    y === z; // FIXME
-    y === w; // FIXME
+    y === z; // FIXME T![K]  ~  T[K]!
+    y === w;
+    y === p;
+    y === r;
     z === z;
     z === w;
+    z === p;
+    z === r; // FIXME: same as y === z;
     w === w;
+    w === p;
+    w === r;
+    p === p;
+    p === r;
 }
 function flags(x, y) {
     if (x === y) {
-        // should be A!
-        x; // FIXME
+        x; // FIXME: should be A!
     }
 }
 function signatures(f1, f2, f3, f4, f5, f6, f7, f8) {
@@ -572,7 +605,7 @@ function unknownTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var a3 = bangA;
     var a4 = bangOptA;
     var a5 = strictA;
-    var a6 = strictOptA; // FIXME
+    var a6 = strictOptA;
     var oa1 = a;
     var oa2 = optA;
     var oa3 = bangA;
@@ -584,7 +617,7 @@ function unknownTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var ba3 = bangA;
     var ba4 = bangOptA;
     var ba5 = strictA;
-    var ba6 = strictOptA; // FIXME
+    var ba6 = strictOptA;
     var boa1 = a;
     var boa2 = optA;
     var boa3 = bangA;
@@ -596,7 +629,7 @@ function unknownTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var sa3 = bangA;
     var sa4 = bangOptA;
     var sa5 = strictA;
-    var sa6 = strictOptA; // FIXME
+    var sa6 = strictOptA;
     var soa1 = a;
     var soa2 = optA;
     var soa3 = bangA;
@@ -610,7 +643,7 @@ function extendsTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var a3 = bangA;
     var a4 = bangOptA;
     var a5 = strictA;
-    var a6 = strictOptA; // FIXME
+    var a6 = strictOptA;
     var oa1 = a;
     var oa2 = optA;
     var oa3 = bangA;
@@ -622,7 +655,7 @@ function extendsTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var ba3 = bangA;
     var ba4 = bangOptA;
     var ba5 = strictA;
-    var ba6 = strictOptA; // FIXME
+    var ba6 = strictOptA;
     var boa1 = a;
     var boa2 = optA;
     var boa3 = bangA;
@@ -634,7 +667,7 @@ function extendsTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var sa3 = bangA;
     var sa4 = bangOptA;
     var sa5 = strictA;
-    var sa6 = strictOptA; // FIXME
+    var sa6 = strictOptA;
     var soa1 = a;
     var soa2 = optA;
     var soa3 = bangA;
@@ -750,8 +783,8 @@ declare function assignability2<T extends number | null>(x: T, y: T!): void;
 declare type IdMapped<T> = {
     [K in keyof T]: T[K];
 };
-declare function mappedAssignability<T>(x: T, y: StrictMembers<T>, z: StrictMembers<T!>): void;
-declare function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>): void;
+declare function mappedAssignability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>): void;
+declare function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>, p: Partial<T>, r: Partial<T!>): void;
 declare function flags<A, B>(x: A | B | undefined, y: A!): void;
 declare function signatures(f1: <T>() => T, f2: <T>() => T!, f3: <T>() => IdMapped<T>, f4: <T>() => IdMapped<T!>, f5: <T>() => Partial<T>, f6: <T>() => Partial<T!>, f7: <T>() => StrictMembers<T>, f8: <T>() => StrictMembers<T!>): void;
 declare type A<T> = {
