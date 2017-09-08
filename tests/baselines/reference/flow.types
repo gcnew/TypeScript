@@ -1,0 +1,116 @@
+=== tests/cases/conformance/types/nonNull/flow.ts ===
+function isNonNull<T>(x: T): x is T! {
+>isNonNull : <T>(x: T) => x is T!
+>T : T
+>x : T
+>T : T
+>x : any
+>T : T
+
+    return x !== null;
+>x !== null : boolean
+>x : T
+>null : null
+}
+
+function test<
+>test : <C extends { x: boolean | null; } | null>(c: C, cBang: C!) => void
+
+    C extends { x: boolean | null } | null
+>C : C
+>x : boolean | null
+>null : null
+>null : null
+
+>(c: C, cBang: C!) {
+>c : C
+>C : C
+>cBang : C!
+>C : C
+
+    if (isNonNull(c)) {
+>isNonNull(c) : boolean
+>isNonNull : <T>(x: T) => x is T!
+>c : C
+
+        c;
+>c : C!
+
+        c.x;
+>c.x : boolean | null
+>c : C!
+>x : boolean | null
+
+        if (isNonNull(c.x)) {
+>isNonNull(c.x) : boolean
+>isNonNull : <T>(x: T) => x is T!
+>c.x : boolean | null
+>c : C!
+>x : boolean | null
+
+            c.x;
+>c.x : boolean
+>c : C!
+>x : boolean
+        }
+        if (c.x !== null) {
+>c.x !== null : boolean
+>c.x : boolean | null
+>c : C!
+>x : boolean | null
+>null : null
+
+            c.x;
+>c.x : boolean
+>c : C!
+>x : boolean
+        }
+    }
+
+    if (isNonNull(cBang)) {
+>isNonNull(cBang) : boolean
+>isNonNull : <T>(x: T) => x is T!
+>cBang : C!
+
+        cBang;
+>cBang : C!
+    }
+}
+
+function f11<T>(x: { a: T }!) {
+>f11 : <T>(x: { a: T; }) => void
+>T : T
+>x : { a: T; }
+>a : T
+>T : T
+
+    x.a;
+>x.a : T
+>x : { a: T; }
+>a : T
+}
+
+function flags<A, B>(x: A|B|undefined, y: A!) {
+>flags : <A, B>(x: A | B | undefined, y: A!) => void
+>A : A
+>B : B
+>x : A | B | undefined
+>A : A
+>B : B
+>y : A!
+>A : A
+
+    if (x === y) {
+>x === y : boolean
+>x : A | B | undefined
+>y : A!
+
+        x;  // FIXME: should be A!
+>x : A
+
+    } else {
+        x;  // FIXME: should be B | undefined
+>x : A | B | undefined
+    }
+}
+

@@ -1,0 +1,92 @@
+=== tests/cases/conformance/types/nonNull/inferenceNoErrors.ts ===
+declare function infer1<T>(x: T): T!;
+>infer1 : Symbol(infer1, Decl(inferenceNoErrors.ts, 0, 0))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 0, 24))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 0, 27))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 0, 24))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 0, 24))
+
+infer1(null! as (number | undefined));
+>infer1 : Symbol(infer1, Decl(inferenceNoErrors.ts, 0, 0))
+
+declare function infer2<T>(x: { a: T }): T!;
+>infer2 : Symbol(infer2, Decl(inferenceNoErrors.ts, 1, 38))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 3, 24))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 3, 27))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 3, 31))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 3, 24))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 3, 24))
+
+infer2(null! as { a: number | null });
+>infer2 : Symbol(infer2, Decl(inferenceNoErrors.ts, 1, 38))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 4, 17))
+
+infer2(null! as { a: null });
+>infer2 : Symbol(infer2, Decl(inferenceNoErrors.ts, 1, 38))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 5, 17))
+
+const res2: number|undefined = infer2(null! as { a: number });
+>res2 : Symbol(res2, Decl(inferenceNoErrors.ts, 6, 5))
+>infer2 : Symbol(infer2, Decl(inferenceNoErrors.ts, 1, 38))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 6, 48))
+
+declare function infer3<T>(x: { a: T! }): T;
+>infer3 : Symbol(infer3, Decl(inferenceNoErrors.ts, 6, 62))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 8, 24))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 8, 27))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 8, 31))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 8, 24))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 8, 24))
+
+infer3(null! as { a: number });
+>infer3 : Symbol(infer3, Decl(inferenceNoErrors.ts, 6, 62))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 9, 17))
+
+const res3: number|undefined = infer3(null! as { a: number });
+>res3 : Symbol(res3, Decl(inferenceNoErrors.ts, 10, 5))
+>infer3 : Symbol(infer3, Decl(inferenceNoErrors.ts, 6, 62))
+>a : Symbol(a, Decl(inferenceNoErrors.ts, 10, 48))
+
+declare function infer4<T>(x: T, y: T!): void;
+>infer4 : Symbol(infer4, Decl(inferenceNoErrors.ts, 10, 62))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 12, 24))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 12, 27))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 12, 24))
+>y : Symbol(y, Decl(inferenceNoErrors.ts, 12, 32))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 12, 24))
+
+infer4(5 as (number|null), 5);
+>infer4 : Symbol(infer4, Decl(inferenceNoErrors.ts, 10, 62))
+
+infer4(null, 5);
+>infer4 : Symbol(infer4, Decl(inferenceNoErrors.ts, 10, 62))
+
+declare function infer5<T>(x: T!): T;
+>infer5 : Symbol(infer5, Decl(inferenceNoErrors.ts, 14, 16))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 16, 24))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 16, 27))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 16, 24))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 16, 24))
+
+infer5(null as never);
+>infer5 : Symbol(infer5, Decl(inferenceNoErrors.ts, 14, 16))
+
+infer5(null as any);
+>infer5 : Symbol(infer5, Decl(inferenceNoErrors.ts, 14, 16))
+
+infer5<any>(null);
+>infer5 : Symbol(infer5, Decl(inferenceNoErrors.ts, 14, 16))
+
+declare function infer6<T>(x: Record<'x'|'y', T!>): void;
+>infer6 : Symbol(infer6, Decl(inferenceNoErrors.ts, 20, 18))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 22, 24))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 22, 27))
+>Record : Symbol(Record, Decl(lib.d.ts, --, --))
+>T : Symbol(T, Decl(inferenceNoErrors.ts, 22, 24))
+
+infer6({ x: 1, y: 2 });
+>infer6 : Symbol(infer6, Decl(inferenceNoErrors.ts, 20, 18))
+>x : Symbol(x, Decl(inferenceNoErrors.ts, 23, 8))
+>y : Symbol(y, Decl(inferenceNoErrors.ts, 23, 14))
+
+

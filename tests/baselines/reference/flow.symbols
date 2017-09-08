@@ -1,0 +1,106 @@
+=== tests/cases/conformance/types/nonNull/flow.ts ===
+function isNonNull<T>(x: T): x is T! {
+>isNonNull : Symbol(isNonNull, Decl(flow.ts, 0, 0))
+>T : Symbol(T, Decl(flow.ts, 0, 19))
+>x : Symbol(x, Decl(flow.ts, 0, 22))
+>T : Symbol(T, Decl(flow.ts, 0, 19))
+>x : Symbol(x, Decl(flow.ts, 0, 22))
+>T : Symbol(T, Decl(flow.ts, 0, 19))
+
+    return x !== null;
+>x : Symbol(x, Decl(flow.ts, 0, 22))
+}
+
+function test<
+>test : Symbol(test, Decl(flow.ts, 2, 1))
+
+    C extends { x: boolean | null } | null
+>C : Symbol(C, Decl(flow.ts, 4, 14))
+>x : Symbol(x, Decl(flow.ts, 5, 15))
+
+>(c: C, cBang: C!) {
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+>C : Symbol(C, Decl(flow.ts, 4, 14))
+>cBang : Symbol(cBang, Decl(flow.ts, 6, 7))
+>C : Symbol(C, Decl(flow.ts, 4, 14))
+
+    if (isNonNull(c)) {
+>isNonNull : Symbol(isNonNull, Decl(flow.ts, 0, 0))
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+
+        c;
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+
+        c.x;
+>c.x : Symbol(x, Decl(flow.ts, 5, 15))
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+>x : Symbol(x, Decl(flow.ts, 5, 15))
+
+        if (isNonNull(c.x)) {
+>isNonNull : Symbol(isNonNull, Decl(flow.ts, 0, 0))
+>c.x : Symbol(x, Decl(flow.ts, 5, 15))
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+>x : Symbol(x, Decl(flow.ts, 5, 15))
+
+            c.x;
+>c.x : Symbol(x, Decl(flow.ts, 5, 15))
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+>x : Symbol(x, Decl(flow.ts, 5, 15))
+        }
+        if (c.x !== null) {
+>c.x : Symbol(x, Decl(flow.ts, 5, 15))
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+>x : Symbol(x, Decl(flow.ts, 5, 15))
+
+            c.x;
+>c.x : Symbol(x, Decl(flow.ts, 5, 15))
+>c : Symbol(c, Decl(flow.ts, 6, 2))
+>x : Symbol(x, Decl(flow.ts, 5, 15))
+        }
+    }
+
+    if (isNonNull(cBang)) {
+>isNonNull : Symbol(isNonNull, Decl(flow.ts, 0, 0))
+>cBang : Symbol(cBang, Decl(flow.ts, 6, 7))
+
+        cBang;
+>cBang : Symbol(cBang, Decl(flow.ts, 6, 7))
+    }
+}
+
+function f11<T>(x: { a: T }!) {
+>f11 : Symbol(f11, Decl(flow.ts, 21, 1))
+>T : Symbol(T, Decl(flow.ts, 23, 13))
+>x : Symbol(x, Decl(flow.ts, 23, 16))
+>a : Symbol(a, Decl(flow.ts, 23, 20))
+>T : Symbol(T, Decl(flow.ts, 23, 13))
+
+    x.a;
+>x.a : Symbol(a, Decl(flow.ts, 23, 20))
+>x : Symbol(x, Decl(flow.ts, 23, 16))
+>a : Symbol(a, Decl(flow.ts, 23, 20))
+}
+
+function flags<A, B>(x: A|B|undefined, y: A!) {
+>flags : Symbol(flags, Decl(flow.ts, 25, 1))
+>A : Symbol(A, Decl(flow.ts, 27, 15))
+>B : Symbol(B, Decl(flow.ts, 27, 17))
+>x : Symbol(x, Decl(flow.ts, 27, 21))
+>A : Symbol(A, Decl(flow.ts, 27, 15))
+>B : Symbol(B, Decl(flow.ts, 27, 17))
+>y : Symbol(y, Decl(flow.ts, 27, 38))
+>A : Symbol(A, Decl(flow.ts, 27, 15))
+
+    if (x === y) {
+>x : Symbol(x, Decl(flow.ts, 27, 21))
+>y : Symbol(y, Decl(flow.ts, 27, 38))
+
+        x;  // FIXME: should be A!
+>x : Symbol(x, Decl(flow.ts, 27, 21))
+
+    } else {
+        x;  // FIXME: should be B | undefined
+>x : Symbol(x, Decl(flow.ts, 27, 21))
+    }
+}
+

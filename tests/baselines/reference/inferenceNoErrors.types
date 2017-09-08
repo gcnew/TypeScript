@@ -1,0 +1,138 @@
+=== tests/cases/conformance/types/nonNull/inferenceNoErrors.ts ===
+declare function infer1<T>(x: T): T!;
+>infer1 : <T>(x: T) => T!
+>T : T
+>x : T
+>T : T
+>T : T
+
+infer1(null! as (number | undefined));
+>infer1(null! as (number | undefined)) : number
+>infer1 : <T>(x: T) => T!
+>null! as (number | undefined) : number | undefined
+>null! : never
+>null : null
+
+declare function infer2<T>(x: { a: T }): T!;
+>infer2 : <T>(x: { a: T; }) => T!
+>T : T
+>x : { a: T; }
+>a : T
+>T : T
+>T : T
+
+infer2(null! as { a: number | null });
+>infer2(null! as { a: number | null }) : number
+>infer2 : <T>(x: { a: T; }) => T!
+>null! as { a: number | null } : { a: number | null; }
+>null! : never
+>null : null
+>a : number | null
+>null : null
+
+infer2(null! as { a: null });
+>infer2(null! as { a: null }) : never
+>infer2 : <T>(x: { a: T; }) => T!
+>null! as { a: null } : { a: null; }
+>null! : never
+>null : null
+>a : null
+>null : null
+
+const res2: number|undefined = infer2(null! as { a: number });
+>res2 : number | undefined
+>infer2(null! as { a: number }) : number
+>infer2 : <T>(x: { a: T; }) => T!
+>null! as { a: number } : { a: number; }
+>null! : never
+>null : null
+>a : number
+
+declare function infer3<T>(x: { a: T! }): T;
+>infer3 : <T>(x: { a: T!; }) => T
+>T : T
+>x : { a: T!; }
+>a : T!
+>T : T
+>T : T
+
+infer3(null! as { a: number });
+>infer3(null! as { a: number }) : number
+>infer3 : <T>(x: { a: T!; }) => T
+>null! as { a: number } : { a: number; }
+>null! : never
+>null : null
+>a : number
+
+const res3: number|undefined = infer3(null! as { a: number });
+>res3 : number | undefined
+>infer3(null! as { a: number }) : number
+>infer3 : <T>(x: { a: T!; }) => T
+>null! as { a: number } : { a: number; }
+>null! : never
+>null : null
+>a : number
+
+declare function infer4<T>(x: T, y: T!): void;
+>infer4 : <T>(x: T, y: T!) => void
+>T : T
+>x : T
+>T : T
+>y : T!
+>T : T
+
+infer4(5 as (number|null), 5);
+>infer4(5 as (number|null), 5) : void
+>infer4 : <T>(x: T, y: T!) => void
+>5 as (number|null) : number | null
+>5 : 5
+>null : null
+>5 : 5
+
+infer4(null, 5);
+>infer4(null, 5) : void
+>infer4 : <T>(x: T, y: T!) => void
+>null : null
+>5 : 5
+
+declare function infer5<T>(x: T!): T;
+>infer5 : <T>(x: T!) => T
+>T : T
+>x : T!
+>T : T
+>T : T
+
+infer5(null as never);
+>infer5(null as never) : never
+>infer5 : <T>(x: T!) => T
+>null as never : never
+>null : null
+
+infer5(null as any);
+>infer5(null as any) : any
+>infer5 : <T>(x: T!) => T
+>null as any : any
+>null : null
+
+infer5<any>(null);
+>infer5<any>(null) : any
+>infer5 : <T>(x: T!) => T
+>null : null
+
+declare function infer6<T>(x: Record<'x'|'y', T!>): void;
+>infer6 : <T>(x: Record<"x" | "y", T!>) => void
+>T : T
+>x : Record<"x" | "y", T!>
+>Record : Record<K, T>
+>T : T
+
+infer6({ x: 1, y: 2 });
+>infer6({ x: 1, y: 2 }) : void
+>infer6 : <T>(x: Record<"x" | "y", T!>) => void
+>{ x: 1, y: 2 } : { x: number; y: number; }
+>x : number
+>1 : 1
+>y : number
+>2 : 2
+
+

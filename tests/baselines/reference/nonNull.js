@@ -59,39 +59,6 @@ let b: typeof a!;
 type Assert<T> = T!;
 let c: Assert<typeof a>;
 
-declare function infer1<T>(x: T): T!;
-infer1(null! as (number | undefined));
-
-declare function infer2<T>(x: { a: T }): T!;
-infer2(null! as { a: number | null });
-infer2(null! as { a: null });
-const res2: number|undefined = infer2(null! as { a: number });
-
-declare function infer3<T>(x: { a: T! }): T;
-infer3(null! as { a: number });
-infer3(null! as { a: null });
-const res3: number|undefined = infer3(null! as { a: number });
-
-declare function infer4<T>(x: T, y: T!): void;
-infer4(5, null);
-infer4(5 as (number|null), 5);
-infer4(null, 5);
-
-declare function infer5<T>(x: T!): T;
-infer5(null);
-infer5(undefined);
-infer5(null as never);
-infer5(null as any);
-
-infer5<null>(null);
-infer5<undefined>(null);
-infer5<never>(null);
-infer5<any>(null);
-
-declare function infer6<T>(x: Record<'x'|'y', T!>): void;
-infer6({ x: 1, y: 2 });
-infer6({ x: 1, y: 'string' });
-
 function assignability<T>(x: T, y: T!) {
     const a: T = y;
     const b: T! = x;
@@ -104,6 +71,26 @@ function assignability2<T extends number|null>(x: T, y: T!) {
     const c: T! = y;
     const d: number = x;
     const e: number = y;
+
+    x = 3;
+    y = 3;
+}
+
+function assignability3<
+    A extends number | null,
+    B extends { x: string } | null
+>(a: A, aBang: A!, b: B, bBang: B!) {
+    const v0: number = a;
+    const v1: number = aBang;
+
+    const v2: { x: string } = b;
+    const v3: { x: string } = bBang;
+
+    const v4: { x?: string } = b;
+    const v5: { x?: string } = bBang;
+
+    const v6: { x: number } = b;
+    const v7: { x: number } = bBang;
 }
 
 type IdMapped<T> = { [K in keyof T]: T[K] }
@@ -170,12 +157,6 @@ function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>
 
     p === p;
     p === r;
-}
-
-function flags<A, B>(x: A|B|undefined, y: A!) {
-    if (x === y) {
-        x;  // FIXME: should be A!
-    }
 }
 
 function signatures(
@@ -391,67 +372,11 @@ function extendsTypes<T extends number>(
     const soa6: StrictMembers<OptA<T>> = strictOptA;
 }
 
-function isNonNull<T>(x: T): x is T! {
-    return x !== null;
-}
-
-function test<
-    A extends number | null,
-    B extends { x: string } | null,
-    C extends { x: boolean | null } | null
->(a: A!, b: B!, c: C, cBang: C!) {
-    const d: number = a;
-    const e: { x: string } = b;
-    const f: { x?: string } = b;
-    const g: { x: number } = b;
-
-    if (isNonNull(c)) {
-        c;
-        c.x;
-        if (isNonNull(c.x)) {
-            c.x;
-        }
-        if (c.x !== null) {
-            c.x;
-        }
-    }
-
-    if (isNonNull(cBang)) {
-        cBang;
-    }
-
-    a = 3;
-}
-
-function f11<T>(x: A<T>!) {
-    x.a;
-}
-
 
 //// [nonNull.js]
 var a;
 var b;
 var c;
-infer1(null);
-infer2(null);
-infer2(null);
-var res2 = infer2(null);
-infer3(null);
-infer3(null);
-var res3 = infer3(null);
-infer4(5, null);
-infer4(5, 5);
-infer4(null, 5);
-infer5(null);
-infer5(undefined);
-infer5(null);
-infer5(null);
-infer5(null);
-infer5(null);
-infer5(null);
-infer5(null);
-infer6({ x: 1, y: 2 });
-infer6({ x: 1, y: 'string' });
 function assignability(x, y) {
     var a = y;
     var b = x;
@@ -463,6 +388,18 @@ function assignability2(x, y) {
     var c = y;
     var d = x;
     var e = y;
+    x = 3;
+    y = 3;
+}
+function assignability3(a, aBang, b, bBang) {
+    var v0 = a;
+    var v1 = aBang;
+    var v2 = b;
+    var v3 = bBang;
+    var v4 = b;
+    var v5 = bBang;
+    var v6 = b;
+    var v7 = bBang;
 }
 function mappedAssignability(x, y, z, w) {
     var v01 = z;
@@ -515,11 +452,6 @@ function comparability(x, y, z, w, p, r) {
     w === r;
     p === p;
     p === r;
-}
-function flags(x, y) {
-    if (x === y) {
-        x; // FIXME: should be A!
-    }
 }
 function signatures(f1, f2, f3, f4, f5, f6, f7, f8) {
     var g12 = f2;
@@ -675,32 +607,6 @@ function extendsTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var soa5 = strictA;
     var soa6 = strictOptA;
 }
-function isNonNull(x) {
-    return x !== null;
-}
-function test(a, b, c, cBang) {
-    var d = a;
-    var e = b;
-    var f = b;
-    var g = b;
-    if (isNonNull(c)) {
-        c;
-        c.x;
-        if (isNonNull(c.x)) {
-            c.x;
-        }
-        if (c.x !== null) {
-            c.x;
-        }
-    }
-    if (isNonNull(cBang)) {
-        cBang;
-    }
-    a = 3;
-}
-function f11(x) {
-    x.a;
-}
 
 
 //// [nonNull.d.ts]
@@ -766,26 +672,16 @@ declare let a: string | undefined | null | never;
 declare let b: typeof a!;
 declare type Assert<T> = T!;
 declare let c: Assert<typeof a>;
-declare function infer1<T>(x: T): T!;
-declare function infer2<T>(x: {
-    a: T;
-}): T!;
-declare const res2: number | undefined;
-declare function infer3<T>(x: {
-    a: T!;
-}): T;
-declare const res3: number | undefined;
-declare function infer4<T>(x: T, y: T!): void;
-declare function infer5<T>(x: T!): T;
-declare function infer6<T>(x: Record<'x' | 'y', T!>): void;
 declare function assignability<T>(x: T, y: T!): void;
 declare function assignability2<T extends number | null>(x: T, y: T!): void;
+declare function assignability3<A extends number | null, B extends {
+    x: string;
+} | null>(a: A, aBang: A!, b: B, bBang: B!): void;
 declare type IdMapped<T> = {
     [K in keyof T]: T[K];
 };
 declare function mappedAssignability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>): void;
 declare function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>, p: Partial<T>, r: Partial<T!>): void;
-declare function flags<A, B>(x: A | B | undefined, y: A!): void;
 declare function signatures(f1: <T>() => T, f2: <T>() => T!, f3: <T>() => IdMapped<T>, f4: <T>() => IdMapped<T!>, f5: <T>() => Partial<T>, f6: <T>() => Partial<T!>, f7: <T>() => StrictMembers<T>, f8: <T>() => StrictMembers<T!>): void;
 declare type A<T> = {
     a: T;
@@ -796,10 +692,3 @@ declare type OptA<T> = {
 declare function knownTypes(a: A<number>, optA: OptA<number>, bangA: A<number>!, bangOptA: OptA<number>!, strictA: StrictMembers<A<number>>, strictOptA: StrictMembers<OptA<number>>): void;
 declare function unknownTypes<T>(a: A<T>, optA: OptA<T>, bangA: A<T>!, bangOptA: OptA<T>!, strictA: StrictMembers<A<T>>, strictOptA: StrictMembers<OptA<T>>): void;
 declare function extendsTypes<T extends number>(a: A<T>, optA: OptA<T>, bangA: A<T>!, bangOptA: OptA<T>!, strictA: StrictMembers<A<T>>, strictOptA: StrictMembers<OptA<T>>): void;
-declare function isNonNull<T>(x: T): x is T!;
-declare function test<A extends number | null, B extends {
-    x: string;
-} | null, C extends {
-    x: boolean | null;
-} | null>(a: A!, b: B!, c: C, cBang: C!): void;
-declare function f11<T>(x: A<T>!): void;

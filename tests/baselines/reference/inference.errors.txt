@@ -1,0 +1,68 @@
+tests/cases/conformance/types/nonNull/inference.ts(11,8): error TS2345: Argument of type '{ a: null; }' is not assignable to parameter of type '{ a: never; }'.
+  Types of property 'a' are incompatible.
+    Type 'null' is not assignable to type 'never'.
+tests/cases/conformance/types/nonNull/inference.ts(15,11): error TS2345: Argument of type 'null' is not assignable to parameter of type '5'.
+tests/cases/conformance/types/nonNull/inference.ts(20,8): error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+tests/cases/conformance/types/nonNull/inference.ts(21,8): error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+tests/cases/conformance/types/nonNull/inference.ts(25,14): error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+tests/cases/conformance/types/nonNull/inference.ts(26,19): error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+tests/cases/conformance/types/nonNull/inference.ts(27,15): error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+tests/cases/conformance/types/nonNull/inference.ts(32,8): error TS2345: Argument of type '{ x: number; y: string; }' is not assignable to parameter of type 'Record<"x" | "y", number>'.
+  Types of property 'y' are incompatible.
+    Type 'string' is not assignable to type 'number'.
+
+
+==== tests/cases/conformance/types/nonNull/inference.ts (8 errors) ====
+    declare function infer1<T>(x: T): T!;
+    infer1(null! as (number | undefined));
+    
+    declare function infer2<T>(x: { a: T }): T!;
+    infer2(null! as { a: number | null });
+    infer2(null! as { a: null });
+    const res2: number|undefined = infer2(null! as { a: number });
+    
+    declare function infer3<T>(x: { a: T! }): T;
+    infer3(null! as { a: number });
+    infer3(null! as { a: null });
+           ~~~~~~~~~~~~~~~~~~~~
+!!! error TS2345: Argument of type '{ a: null; }' is not assignable to parameter of type '{ a: never; }'.
+!!! error TS2345:   Types of property 'a' are incompatible.
+!!! error TS2345:     Type 'null' is not assignable to type 'never'.
+    const res3: number|undefined = infer3(null! as { a: number });
+    
+    declare function infer4<T>(x: T, y: T!): void;
+    infer4(5, null);
+              ~~~~
+!!! error TS2345: Argument of type 'null' is not assignable to parameter of type '5'.
+    infer4(5 as (number|null), 5);
+    infer4(null, 5);
+    
+    declare function infer5<T>(x: T!): T;
+    infer5(null);
+           ~~~~
+!!! error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+    infer5(undefined);
+           ~~~~~~~~~
+!!! error TS2345: Argument of type 'undefined' is not assignable to parameter of type 'never'.
+    infer5(null as never);
+    infer5(null as any);
+    
+    infer5<null>(null);
+                 ~~~~
+!!! error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+    infer5<undefined>(null);
+                      ~~~~
+!!! error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+    infer5<never>(null);
+                  ~~~~
+!!! error TS2345: Argument of type 'null' is not assignable to parameter of type 'never'.
+    infer5<any>(null);
+    
+    declare function infer6<T>(x: Record<'x'|'y', T!>): void;
+    infer6({ x: 1, y: 2 });
+    infer6({ x: 1, y: 'string' });
+           ~~~~~~~~~~~~~~~~~~~~~
+!!! error TS2345: Argument of type '{ x: number; y: string; }' is not assignable to parameter of type 'Record<"x" | "y", number>'.
+!!! error TS2345:   Types of property 'y' are incompatible.
+!!! error TS2345:     Type 'string' is not assignable to type 'number'.
+    

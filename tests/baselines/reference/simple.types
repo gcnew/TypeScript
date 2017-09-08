@@ -1,0 +1,19 @@
+=== tests/cases/conformance/types/nonNull/simple.ts ===
+let a: string | undefined | null | never;
+>a : string | null | undefined
+>null : null
+
+let b: typeof a!;
+>b : string
+>a : string | null | undefined
+
+type Assert<T> = T!;
+>Assert : T!
+>T : T
+>T : T
+
+let c: Assert<typeof a>;
+>c : string
+>Assert : T!
+>a : string | null | undefined
+
