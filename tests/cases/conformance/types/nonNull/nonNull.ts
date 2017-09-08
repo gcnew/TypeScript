@@ -71,14 +71,14 @@ infer2(null! as { a: null });
 const res2: number|undefined = infer2(null! as { a: number });
 
 declare function infer3<T>(x: { a: T! }): T;
-infer3(null! as { a: number });  // FIXME
-infer3(null! as { a: null });    // FIXME
+infer3(null! as { a: number });
+infer3(null! as { a: null });
 const res3: number|undefined = infer3(null! as { a: number });
 
 declare function infer4<T>(x: T, y: T!): void;
 infer4(5, null);
 infer4(5 as (number|null), 5);
-infer4(null, 5);  // FIXME      // should be number
+infer4(null, 5);
 
 declare function infer5<T>(x: T!): T;
 infer5(null);
@@ -92,8 +92,8 @@ infer5<never>(null);
 infer5<any>(null);
 
 declare function infer6<T>(x: Record<'x'|'y', T!>): void;
-infer6({ x: 1, y: 2 });           // FIXME
-infer6({ x: 1, y: 'string' });    // FIXME
+infer6({ x: 1, y: 2 });
+infer6({ x: 1, y: 'string' });
 
 function assignability<T>(x: T, y: T!) {
     const a: T = y;
@@ -191,16 +191,16 @@ function signatures(
     f7: <T>() => StrictMembers<T>,
     f8: <T>() => StrictMembers<T!>
 ) {
-    const g12: typeof f1 = f2;  // FIXME
+    const g12: typeof f1 = f2;
 
     const g21: typeof f2 = f1;  // FIXME
 
-    const g34: typeof f3 = f4;  // FIXME
+    const g34: typeof f3 = f4;
     const g37: typeof f3 = f7;  // FIXME
     const g38: typeof f3 = f8;  // FIXME
 
     const g41: typeof f4 = f1;  // FIXME
-    const g42: typeof f4 = f2;  // FIXME
+    const g42: typeof f4 = f2;
     const g43: typeof f4 = f3;  // FIXME
     const g47: typeof f4 = f7;
     const g48: typeof f4 = f8;  // FIXME
@@ -222,15 +222,15 @@ function signatures(
     const g68: typeof f6 = f8;
 
     const g71: typeof f7 = f1;  // FIXME
-    const g72: typeof f7 = f2;
+    const g72: typeof f7 = f2;  // FIXME
     const g73: typeof f7 = f3;
     const g74: typeof f7 = f4;
     const g75: typeof f7 = f5;
     const g76: typeof f7 = f6;
-    const g78: typeof f7 = f8;  // FIXME
+    const g78: typeof f7 = f8;
 
     const g81: typeof f8 = f1;  // FIXME
-    const g82: typeof f8 = f2;
+    const g82: typeof f8 = f2;  // FIXME
     const g83: typeof f8 = f3;
     const g84: typeof f8 = f4;
     const g85: typeof f8 = f5;
