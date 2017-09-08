@@ -26,8 +26,8 @@ type Strip2<T> = { [K in keyof T!]: T![K]! }
 
 type Error1<T, K extends keyof T!> = T[K]
 
-type StupidButOK<T>  = { [K in keyof T]: T![K] }
-type StupidButOK2<T> = { [K in keyof T]: T![K!] }  // FIXME
+type StupidButOK<T>  = { [K in keyof T]: T![K]  }
+type StupidButOK2<T> = { [K in keyof T]: T![K!] }
 
 type Obj = {
     x: number|null,
@@ -111,56 +111,73 @@ function assignability2<T extends number|null>(x: T, y: T!) {
 
 type IdMapped<T> = { [K in keyof T]: T[K] }
 
-function mappedAssignability<T>(x: T, y: StrictMembers<T>, z: StrictMembers<T!>) {
-    const a: T = y;
-    const b: T = z;     // FIXME
-    const c: T! = y;
-    const d: T! = z;    // FIXME
+function mappedAssignability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>) {
+    const v01: T = z;
+    const v02: T = w;
+    const v03: T! = z;
+    const v04: T! = w;
 
-    const e: StrictMembers<T> = x;
-    const f: StrictMembers<T> = y;
-    const g: StrictMembers<T> = z;
+    const v05: StrictMembers<T> = x;
+    const v06: StrictMembers<T> = y;
+    const v07: StrictMembers<T> = z;
+    const v08: StrictMembers<T> = w;
 
-    const h: StrictMembers<T!> = x;
-    const i: StrictMembers<T!> = y;
-    const j: StrictMembers<T!> = z;
+    const v09: StrictMembers<T!> = x;
+    const v10: StrictMembers<T!> = y;
+    const v11: StrictMembers<T!> = z;
+    const v12: StrictMembers<T!> = w;
 
-    const k: IdMapped<T> = x;
-    const l: IdMapped<T> = y;
-    const m: IdMapped<T> = z;
+    const v13: IdMapped<T> = x;
+    const v14: IdMapped<T> = y;
+    const v15: IdMapped<T> = z;
+    const v16: IdMapped<T> = w;
 
-    const n: IdMapped<T!> = x;
-    const o: IdMapped<T!> = y;
-    const p: IdMapped<T!> = z;
+    const v17: IdMapped<T!> = x;
+    const v18: IdMapped<T!> = y;
+    const v19: IdMapped<T!> = z;
+    const v20: IdMapped<T!> = w;
 
-    const q: Partial<T> = x;
-    const r: Partial<T> = y;
-    const s: Partial<T> = z;
+    const v21: Partial<T> = x;
+    const v22: Partial<T> = y;
+    const v23: Partial<T> = z;
+    const v24: Partial<T> = w;
 
-    const u: Partial<T!> = x; // FIXME
-    const v: Partial<T!> = y;
-    const w: Partial<T!> = z;
+    const v25: Partial<T!> = x; // FIXME: T ~ Partial<T!>;
+                                // T is inferred as {}, but the real type in strict mode actually is {} | null | undefined
+    const v26: Partial<T!> = y;
+    const v27: Partial<T!> = z;
+    const v28: Partial<T!> = w;
 }
 
-function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>) {
+function comparability<T>(x: T, y: T!, z: StrictMembers<T>, w: StrictMembers<T!>, p: Partial<T>, r: Partial<T!>) {
     x === y;
     x === z;
-    x === w;  // FIXME
+    x === w;
+    x === p;
+    x === r;
 
     y === y;
-    y === z;  // FIXME
-    y === w;  // FIXME
+    y === z;  // FIXME T![K]  ~  T[K]!
+    y === w;
+    y === p;
+    y === r;
 
     z === z;
     z === w;
+    z === p;
+    z === r;  // FIXME: same as y === z;
 
     w === w;
+    w === p;
+    w === r;
+
+    p === p;
+    p === r;
 }
 
 function flags<A, B>(x: A|B|undefined, y: A!) {
     if (x === y) {
-        // should be A!
-        x;  // FIXME
+        x;  // FIXME: should be A!
     }
 }
 
@@ -288,7 +305,7 @@ function unknownTypes<T>(
     const a3: A<T> = bangA;
     const a4: A<T> = bangOptA;
     const a5: A<T> = strictA;
-    const a6: A<T> = strictOptA;  // FIXME
+    const a6: A<T> = strictOptA;
 
     const oa1: OptA<T> = a;
     const oa2: OptA<T> = optA;
@@ -302,7 +319,7 @@ function unknownTypes<T>(
     const ba3: A<T>! = bangA;
     const ba4: A<T>! = bangOptA;
     const ba5: A<T>! = strictA;
-    const ba6: A<T>! = strictOptA;  // FIXME
+    const ba6: A<T>! = strictOptA;
 
     const boa1: OptA<T>! = a;
     const boa2: OptA<T>! = optA;
@@ -316,7 +333,7 @@ function unknownTypes<T>(
     const sa3: StrictMembers<A<T>> = bangA;
     const sa4: StrictMembers<A<T>> = bangOptA;
     const sa5: StrictMembers<A<T>> = strictA;
-    const sa6: StrictMembers<A<T>> = strictOptA;  // FIXME
+    const sa6: StrictMembers<A<T>> = strictOptA;
 
     const soa1: StrictMembers<OptA<T>> = a;
     const soa2: StrictMembers<OptA<T>> = optA;
@@ -339,7 +356,7 @@ function extendsTypes<T extends number>(
     const a3: A<T> = bangA;
     const a4: A<T> = bangOptA;
     const a5: A<T> = strictA;
-    const a6: A<T> = strictOptA;  // FIXME
+    const a6: A<T> = strictOptA;
 
     const oa1: OptA<T> = a;
     const oa2: OptA<T> = optA;
@@ -353,7 +370,7 @@ function extendsTypes<T extends number>(
     const ba3: A<T>! = bangA;
     const ba4: A<T>! = bangOptA;
     const ba5: A<T>! = strictA;
-    const ba6: A<T>! = strictOptA;  // FIXME
+    const ba6: A<T>! = strictOptA;
 
     const boa1: OptA<T>! = a;
     const boa2: OptA<T>! = optA;
@@ -367,7 +384,7 @@ function extendsTypes<T extends number>(
     const sa3: StrictMembers<A<T>> = bangA;
     const sa4: StrictMembers<A<T>> = bangOptA;
     const sa5: StrictMembers<A<T>> = strictA;
-    const sa6: StrictMembers<A<T>> = strictOptA;  // FIXME
+    const sa6: StrictMembers<A<T>> = strictOptA;
 
     const soa1: StrictMembers<OptA<T>> = a;
     const soa2: StrictMembers<OptA<T>> = optA;
