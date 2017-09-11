@@ -10606,6 +10606,10 @@ namespace ts {
                         target = removeTypesFromUnionOrIntersection(<UnionOrIntersectionType>target, matchingTypes);
                     }
                 }
+                if (source.flags & TypeFlags.NonNull) {
+                    inferFromTypes((<NonNullType>source).innerType, target);
+                    return;
+                }
                 if (target.flags & TypeFlags.NonNull) {
                     inferFromTypes(source, (<NonNullType>target).innerType);
                     return;
