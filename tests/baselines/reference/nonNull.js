@@ -171,17 +171,17 @@ function signatures(
 ) {
     const g12: typeof f1 = f2;
 
-    const g21: typeof f2 = f1;  // FIXME
+    const g21: typeof f2 = f1;
 
     const g34: typeof f3 = f4;
-    const g37: typeof f3 = f7;  // FIXME
-    const g38: typeof f3 = f8;  // FIXME
+    const g37: typeof f3 = f7;
+    const g38: typeof f3 = f8;
 
     const g41: typeof f4 = f1;  // FIXME
     const g42: typeof f4 = f2;
-    const g43: typeof f4 = f3;  // FIXME
+    const g43: typeof f4 = f3;
     const g47: typeof f4 = f7;
-    const g48: typeof f4 = f8;  // FIXME
+    const g48: typeof f4 = f8;
 
     const g51: typeof f5 = f1;
     const g52: typeof f5 = f2;
@@ -193,10 +193,10 @@ function signatures(
 
     const g61: typeof f6 = f1;  // FIXME
     const g62: typeof f6 = f2;
-    const g63: typeof f6 = f3;  // FIXME
+    const g63: typeof f6 = f3;
     const g64: typeof f6 = f4;
-    const g65: typeof f6 = f5;  // FIXME
-    const g67: typeof f6 = f7;  // FIXME
+    const g65: typeof f6 = f5;
+    const g67: typeof f6 = f7;
     const g68: typeof f6 = f8;
 
     const g71: typeof f7 = f1;  // FIXME
@@ -213,7 +213,7 @@ function signatures(
     const g84: typeof f8 = f4;
     const g85: typeof f8 = f5;
     const g86: typeof f8 = f6;
-    const g87: typeof f8 = f7;  // FIXME
+    const g87: typeof f8 = f7;
 }
 
 type A<T>    = { a: T }
@@ -455,15 +455,15 @@ function comparability(x, y, z, w, p, r) {
 }
 function signatures(f1, f2, f3, f4, f5, f6, f7, f8) {
     var g12 = f2;
-    var g21 = f1; // FIXME
+    var g21 = f1;
     var g34 = f4;
-    var g37 = f7; // FIXME
-    var g38 = f8; // FIXME
+    var g37 = f7;
+    var g38 = f8;
     var g41 = f1; // FIXME
     var g42 = f2;
-    var g43 = f3; // FIXME
+    var g43 = f3;
     var g47 = f7;
-    var g48 = f8; // FIXME
+    var g48 = f8;
     var g51 = f1;
     var g52 = f2;
     var g53 = f3;
@@ -473,10 +473,10 @@ function signatures(f1, f2, f3, f4, f5, f6, f7, f8) {
     var g58 = f8;
     var g61 = f1; // FIXME
     var g62 = f2;
-    var g63 = f3; // FIXME
+    var g63 = f3;
     var g64 = f4;
-    var g65 = f5; // FIXME
-    var g67 = f7; // FIXME
+    var g65 = f5;
+    var g67 = f7;
     var g68 = f8;
     var g71 = f1; // FIXME
     var g72 = f2; // FIXME
@@ -491,7 +491,7 @@ function signatures(f1, f2, f3, f4, f5, f6, f7, f8) {
     var g84 = f4;
     var g85 = f5;
     var g86 = f6;
-    var g87 = f7; // FIXME
+    var g87 = f7;
 }
 function knownTypes(a, optA, bangA, bangOptA, strictA, strictOptA) {
     var a1 = a;

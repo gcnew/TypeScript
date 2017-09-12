@@ -177,14 +177,14 @@ function signatures(
     const g21: typeof f2 = f1;
 
     const g34: typeof f3 = f4;
-    const g37: typeof f3 = f7;  // FIXME
-    const g38: typeof f3 = f8;  // FIXME
+    const g37: typeof f3 = f7;
+    const g38: typeof f3 = f8;
 
     const g41: typeof f4 = f1;  // FIXME
     const g42: typeof f4 = f2;
     const g43: typeof f4 = f3;
     const g47: typeof f4 = f7;
-    const g48: typeof f4 = f8;  // FIXME
+    const g48: typeof f4 = f8;
 
     const g51: typeof f5 = f1;
     const g52: typeof f5 = f2;
@@ -196,10 +196,10 @@ function signatures(
 
     const g61: typeof f6 = f1;  // FIXME
     const g62: typeof f6 = f2;
-    const g63: typeof f6 = f3;  // FIXME
+    const g63: typeof f6 = f3;
     const g64: typeof f6 = f4;
     const g65: typeof f6 = f5;
-    const g67: typeof f6 = f7;  // FIXME
+    const g67: typeof f6 = f7;
     const g68: typeof f6 = f8;
 
     const g71: typeof f7 = f1;  // FIXME

@@ -46,36 +46,44 @@ tests/cases/conformance/types/nonNull/nonNull.ts(143,5): error TS2365: Operator 
 tests/cases/conformance/types/nonNull/nonNull.ts(151,5): error TS2365: Operator '===' cannot be applied to types 'StrictMembers<T>' and 'Partial<T!>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(173,11): error TS2322: Type '<T>() => T' is not assignable to type '<T>() => T!'.
   Type 'T' is not assignable to type 'T!'.
-tests/cases/conformance/types/nonNull/nonNull.ts(176,11): error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => IdMapped<T>'.
-  Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(177,11): error TS2322: Type '<T>() => StrictMembers<T!>' is not assignable to type '<T>() => IdMapped<T>'.
-  Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(181,11): error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => IdMapped<T!>'.
   Type 'IdMapped<T>' is not assignable to type 'IdMapped<T!>'.
     Type 'keyof T!' is not assignable to type 'keyof T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(182,11): error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => IdMapped<T!>'.
-  Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T!>'.
-tests/cases/conformance/types/nonNull/nonNull.ts(183,11): error TS2322: Type '<T>() => StrictMembers<T!>' is not assignable to type '<T>() => IdMapped<T!>'.
-  Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T!>'.
+  Type 'StrictMembers<T>' is not assignable to type 'IdMapped<T!>'.
+    Type 'keyof T!' is not assignable to type 'keyof T'.
+tests/cases/conformance/types/nonNull/nonNull.ts(195,11): error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => Partial<T!>'.
+  Type 'IdMapped<T>' is not assignable to type 'Partial<T!>'.
+    Type 'keyof T!' is not assignable to type 'keyof T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(197,11): error TS2322: Type '<T>() => Partial<T>' is not assignable to type '<T>() => Partial<T!>'.
   Type 'Partial<T>' is not assignable to type 'Partial<T!>'.
     Type 'keyof T!' is not assignable to type 'keyof T'.
+tests/cases/conformance/types/nonNull/nonNull.ts(198,11): error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => Partial<T!>'.
+  Type 'StrictMembers<T>' is not assignable to type 'Partial<T!>'.
+    Type 'keyof T!' is not assignable to type 'keyof T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(203,11): error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => StrictMembers<T>'.
-  Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T>'.
+  Type 'IdMapped<T>' is not assignable to type 'StrictMembers<T>'.
+    Type 'T[K]' is not assignable to type 'T[K]!'.
+      Type 'T[string]' is not assignable to type 'T[K]!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(204,11): error TS2322: Type '<T>() => IdMapped<T!>' is not assignable to type '<T>() => StrictMembers<T>'.
-  Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T>'.
+  Type 'IdMapped<T!>' is not assignable to type 'StrictMembers<T>'.
+    Type 'T![K]' is not assignable to type 'T[K]!'.
+      Type 'T![string]' is not assignable to type 'T[K]!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(205,11): error TS2322: Type '<T>() => Partial<T>' is not assignable to type '<T>() => StrictMembers<T>'.
-  Type 'Partial<{}>' is not assignable to type 'StrictMembers<T>'.
+  Type 'Partial<T>' is not assignable to type 'StrictMembers<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(206,11): error TS2322: Type '<T>() => Partial<T!>' is not assignable to type '<T>() => StrictMembers<T>'.
-  Type 'Partial<{}>' is not assignable to type 'StrictMembers<T>'.
+  Type 'Partial<T!>' is not assignable to type 'StrictMembers<T>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(211,11): error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => StrictMembers<T!>'.
-  Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T!>'.
+  Type 'IdMapped<T>' is not assignable to type 'StrictMembers<T!>'.
+    Type 'keyof T!' is not assignable to type 'keyof T'.
 tests/cases/conformance/types/nonNull/nonNull.ts(212,11): error TS2322: Type '<T>() => IdMapped<T!>' is not assignable to type '<T>() => StrictMembers<T!>'.
-  Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T!>'.
+  Type 'IdMapped<T!>' is not assignable to type 'StrictMembers<T!>'.
+    Type 'T![K]' is not assignable to type 'T![K]!'.
+      Type 'T![string]' is not assignable to type 'T![K]!'.
 tests/cases/conformance/types/nonNull/nonNull.ts(213,11): error TS2322: Type '<T>() => Partial<T>' is not assignable to type '<T>() => StrictMembers<T!>'.
-  Type 'Partial<{}>' is not assignable to type 'StrictMembers<T!>'.
+  Type 'Partial<T>' is not assignable to type 'StrictMembers<T!>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(214,11): error TS2322: Type '<T>() => Partial<T!>' is not assignable to type '<T>() => StrictMembers<T!>'.
-  Type 'Partial<{}>' is not assignable to type 'StrictMembers<T!>'.
+  Type 'Partial<T!>' is not assignable to type 'StrictMembers<T!>'.
 tests/cases/conformance/types/nonNull/nonNull.ts(215,11): error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => StrictMembers<T!>'.
   Type 'StrictMembers<T>' is not assignable to type 'StrictMembers<T!>'.
     Type 'keyof T!' is not assignable to type 'keyof T'.
@@ -150,7 +158,7 @@ tests/cases/conformance/types/nonNull/nonNull.ts(368,11): error TS2322: Type 'A<
 tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'OptA<T>' is not assignable to type 'StrictMembers<OptA<T>>'.
 
 
-==== tests/cases/conformance/types/nonNull/nonNull.ts (70 errors) ====
+==== tests/cases/conformance/types/nonNull/nonNull.ts (69 errors) ====
     type NonNull<T> = T!
     type IndexNullable<T, K extends keyof T!> = T![K]
     type NonNullableMember<T, K extends keyof T> = T[K]!
@@ -391,24 +399,18 @@ tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'Op
     ) {
         const g12: typeof f1 = f2;
     
-        const g21: typeof f2 = f1;  // FIXME
+        const g21: typeof f2 = f1;
               ~~~
 !!! error TS2322: Type '<T>() => T' is not assignable to type '<T>() => T!'.
 !!! error TS2322:   Type 'T' is not assignable to type 'T!'.
     
         const g34: typeof f3 = f4;
-        const g37: typeof f3 = f7;  // FIXME
-              ~~~
-!!! error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => IdMapped<T>'.
-!!! error TS2322:   Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T>'.
-        const g38: typeof f3 = f8;  // FIXME
-              ~~~
-!!! error TS2322: Type '<T>() => StrictMembers<T!>' is not assignable to type '<T>() => IdMapped<T>'.
-!!! error TS2322:   Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T>'.
+        const g37: typeof f3 = f7;
+        const g38: typeof f3 = f8;
     
         const g41: typeof f4 = f1;  // FIXME
         const g42: typeof f4 = f2;
-        const g43: typeof f4 = f3;  // FIXME
+        const g43: typeof f4 = f3;
               ~~~
 !!! error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => IdMapped<T!>'.
 !!! error TS2322:   Type 'IdMapped<T>' is not assignable to type 'IdMapped<T!>'.
@@ -416,11 +418,9 @@ tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'Op
         const g47: typeof f4 = f7;
               ~~~
 !!! error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => IdMapped<T!>'.
-!!! error TS2322:   Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T!>'.
-        const g48: typeof f4 = f8;  // FIXME
-              ~~~
-!!! error TS2322: Type '<T>() => StrictMembers<T!>' is not assignable to type '<T>() => IdMapped<T!>'.
-!!! error TS2322:   Type 'StrictMembers<{}>' is not assignable to type 'IdMapped<T!>'.
+!!! error TS2322:   Type 'StrictMembers<T>' is not assignable to type 'IdMapped<T!>'.
+!!! error TS2322:     Type 'keyof T!' is not assignable to type 'keyof T'.
+        const g48: typeof f4 = f8;
     
         const g51: typeof f5 = f1;
         const g52: typeof f5 = f2;
@@ -432,14 +432,22 @@ tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'Op
     
         const g61: typeof f6 = f1;  // FIXME
         const g62: typeof f6 = f2;
-        const g63: typeof f6 = f3;  // FIXME
+        const g63: typeof f6 = f3;
+              ~~~
+!!! error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => Partial<T!>'.
+!!! error TS2322:   Type 'IdMapped<T>' is not assignable to type 'Partial<T!>'.
+!!! error TS2322:     Type 'keyof T!' is not assignable to type 'keyof T'.
         const g64: typeof f6 = f4;
-        const g65: typeof f6 = f5;  // FIXME
+        const g65: typeof f6 = f5;
               ~~~
 !!! error TS2322: Type '<T>() => Partial<T>' is not assignable to type '<T>() => Partial<T!>'.
 !!! error TS2322:   Type 'Partial<T>' is not assignable to type 'Partial<T!>'.
 !!! error TS2322:     Type 'keyof T!' is not assignable to type 'keyof T'.
-        const g67: typeof f6 = f7;  // FIXME
+        const g67: typeof f6 = f7;
+              ~~~
+!!! error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => Partial<T!>'.
+!!! error TS2322:   Type 'StrictMembers<T>' is not assignable to type 'Partial<T!>'.
+!!! error TS2322:     Type 'keyof T!' is not assignable to type 'keyof T'.
         const g68: typeof f6 = f8;
     
         const g71: typeof f7 = f1;  // FIXME
@@ -447,19 +455,23 @@ tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'Op
         const g73: typeof f7 = f3;
               ~~~
 !!! error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => StrictMembers<T>'.
-!!! error TS2322:   Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T>'.
+!!! error TS2322:   Type 'IdMapped<T>' is not assignable to type 'StrictMembers<T>'.
+!!! error TS2322:     Type 'T[K]' is not assignable to type 'T[K]!'.
+!!! error TS2322:       Type 'T[string]' is not assignable to type 'T[K]!'.
         const g74: typeof f7 = f4;
               ~~~
 !!! error TS2322: Type '<T>() => IdMapped<T!>' is not assignable to type '<T>() => StrictMembers<T>'.
-!!! error TS2322:   Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T>'.
+!!! error TS2322:   Type 'IdMapped<T!>' is not assignable to type 'StrictMembers<T>'.
+!!! error TS2322:     Type 'T![K]' is not assignable to type 'T[K]!'.
+!!! error TS2322:       Type 'T![string]' is not assignable to type 'T[K]!'.
         const g75: typeof f7 = f5;
               ~~~
 !!! error TS2322: Type '<T>() => Partial<T>' is not assignable to type '<T>() => StrictMembers<T>'.
-!!! error TS2322:   Type 'Partial<{}>' is not assignable to type 'StrictMembers<T>'.
+!!! error TS2322:   Type 'Partial<T>' is not assignable to type 'StrictMembers<T>'.
         const g76: typeof f7 = f6;
               ~~~
 !!! error TS2322: Type '<T>() => Partial<T!>' is not assignable to type '<T>() => StrictMembers<T>'.
-!!! error TS2322:   Type 'Partial<{}>' is not assignable to type 'StrictMembers<T>'.
+!!! error TS2322:   Type 'Partial<T!>' is not assignable to type 'StrictMembers<T>'.
         const g78: typeof f7 = f8;
     
         const g81: typeof f8 = f1;  // FIXME
@@ -467,20 +479,23 @@ tests/cases/conformance/types/nonNull/nonNull.ts(369,11): error TS2322: Type 'Op
         const g83: typeof f8 = f3;
               ~~~
 !!! error TS2322: Type '<T>() => IdMapped<T>' is not assignable to type '<T>() => StrictMembers<T!>'.
-!!! error TS2322:   Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T!>'.
+!!! error TS2322:   Type 'IdMapped<T>' is not assignable to type 'StrictMembers<T!>'.
+!!! error TS2322:     Type 'keyof T!' is not assignable to type 'keyof T'.
         const g84: typeof f8 = f4;
               ~~~
 !!! error TS2322: Type '<T>() => IdMapped<T!>' is not assignable to type '<T>() => StrictMembers<T!>'.
-!!! error TS2322:   Type 'IdMapped<{}>' is not assignable to type 'StrictMembers<T!>'.
+!!! error TS2322:   Type 'IdMapped<T!>' is not assignable to type 'StrictMembers<T!>'.
+!!! error TS2322:     Type 'T![K]' is not assignable to type 'T![K]!'.
+!!! error TS2322:       Type 'T![string]' is not assignable to type 'T![K]!'.
         const g85: typeof f8 = f5;
               ~~~
 !!! error TS2322: Type '<T>() => Partial<T>' is not assignable to type '<T>() => StrictMembers<T!>'.
-!!! error TS2322:   Type 'Partial<{}>' is not assignable to type 'StrictMembers<T!>'.
+!!! error TS2322:   Type 'Partial<T>' is not assignable to type 'StrictMembers<T!>'.
         const g86: typeof f8 = f6;
               ~~~
 !!! error TS2322: Type '<T>() => Partial<T!>' is not assignable to type '<T>() => StrictMembers<T!>'.
-!!! error TS2322:   Type 'Partial<{}>' is not assignable to type 'StrictMembers<T!>'.
-        const g87: typeof f8 = f7;  // FIXME
+!!! error TS2322:   Type 'Partial<T!>' is not assignable to type 'StrictMembers<T!>'.
+        const g87: typeof f8 = f7;
               ~~~
 !!! error TS2322: Type '<T>() => StrictMembers<T>' is not assignable to type '<T>() => StrictMembers<T!>'.
 !!! error TS2322:   Type 'StrictMembers<T>' is not assignable to type 'StrictMembers<T!>'.
